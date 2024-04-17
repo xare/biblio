@@ -47,9 +47,10 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
      */
     public function isFilenameExists( string $filename ): bool {
         global $wpdb;
+		$table_name = $wpdb->prefix.self::GESLIB_LOG_TABLE;
 		$query = $wpdb->prepare(
             "SELECT COUNT(ID)
-			FROM $wpdb->prefix.self::GESLIB_LOG_TABLE
+			FROM {$table_name}
 			WHERE filename = %s",
             $filename
         );
@@ -230,14 +231,14 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 		global $wpdb;
 		$table_name = $wpdb->prefix . self::GESLIB_LOG_TABLE;
 		try {
-			return (int) $wpdb->get_var( "SELECT COUNT(id)
+			$query = $wpdb->prepare( "SELECT COUNT(id)
 								FROM {$table_name}
-								WHERE status = %s ", $status);
+								WHERE status = %s", $status);
+			return (int) $wpdb->get_var( $query );
 		} catch(\Exception $exception) {
 			error_log($exception->getMessage());
 			return false;
 		}
-
 	}
 
     /**

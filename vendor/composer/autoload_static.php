@@ -9,11 +9,21 @@ class ComposerStaticInitf8f333bb813ce809ba35717c85138ef4
     public static $prefixLengthsPsr4 = array (
         'I' => 
         array (
+            'Inc\\Geslib\\' => 11,
+            'Inc\\Covers\\' => 11,
             'Inc\\Biblio\\' => 11,
         ),
     );
 
     public static $prefixDirsPsr4 = array (
+        'Inc\\Geslib\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/inc/Geslib',
+        ),
+        'Inc\\Covers\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/inc/Covers',
+        ),
         'Inc\\Biblio\\' => 
         array (
             0 => __DIR__ . '/../..' . '/inc',

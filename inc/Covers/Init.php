@@ -23,13 +23,14 @@ final class Init
       Dashboard::class,
       CoversLogController::class,
       CoversScanProductsCommand::class,
-      CoversHelloCommand::class,
-      CoversMediaCleanup::class,
+      /* CoversHelloCommand::class,
+      CoversMediaCleanup::class, */
       CoversScanProductsFormController::class,
-      Enqueue::class,
-      Cron::class,
+     /*  Enqueue::class,
+      Cron::class, */
     ];
   }
+
 
   /**
    * Loop through the classes, initialize them

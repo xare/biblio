@@ -12,9 +12,20 @@ class Activate {
         global $wpdb;
         flush_rewrite_rules();
         $default = [];
-        foreach (['geslib', 'dilve', 'cegal'] as $settingItem) {
+        foreach (['biblio', 'geslib', 'dilve', 'cegal'] as $settingItem) {
             update_option($settingItem . '_settings', $default);
         }
+        /* if ( !get_option('biblio')) {
+            update_option('biblio', $default);
+          } */
+
+          if ( !get_option('biblio_cpt')) {
+            update_option('biblio_cpt', $default);
+          }
+
+          if ( !get_option('biblio_taxonomy')) {
+            update_option('biblio_taxonomy', $default);
+          }
 
         wp_mkdir_p( WP_CONTENT_DIR . '/uploads/'.get_option('geslib_settings') );
 
@@ -38,6 +49,8 @@ class Activate {
             log_id mediumint(9) unsigned,
             geslib_id mediumint(9) unsigned,
             type varchar(255) NOT NULL,
+            entity varchar(255),
+            action varchar(255),
             data text,
             PRIMARY KEY (id)
         ) $charset_collate;";
@@ -46,6 +59,7 @@ class Activate {
             id int(11) unsigned NOT NULL AUTO_INCREMENT,
             log_id mediumint(9) unsigned,
             geslib_id mediumint(9) unsigned,
+            type varchar(255),
             action varchar(255) NOT NULL,
             entity varchar(255) NOT NULL,
             metadata text,

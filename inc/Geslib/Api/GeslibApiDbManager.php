@@ -94,12 +94,15 @@ class GeslibApiDbManager {
 	 */
 	public function deleteTerm( int $geslib_id, string $taxonomy_name ): bool {
 		$term = get_term_by('geslib_id', $geslib_id, $taxonomy_name);
-		try {
-			 wp_delete_term($term->ID, $taxonomy_name);
-			 return true;
-		} catch (Exception $e) {
-			error_log('function deleteTerm : '.$e->getMessage());
-			return false;
+		if (false !== $term) {
+			try {
+				wp_delete_term($term->ID, $taxonomy_name);
+				return true;
+			} catch (Exception $e) {
+				error_log('function deleteTerm : '.$e->getMessage());
+				return false;
+			}
 		}
+		return false;
 	}
 }

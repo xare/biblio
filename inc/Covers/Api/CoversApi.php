@@ -22,12 +22,12 @@ class CoversApi {
   	private $cegal_url_pass;
 
 	public function __construct(){
-		$this->dilveSettings = get_option('dilve_settings');
+		$this->dilveSettings = get_option('covers_settings');
 		$this->dilve_url_host = "www.dilve.es";
 		$this->dilve_url_path = "/dilve/dilve";
 		$this->dilve_url_user = $this->dilveSettings['dilve_user'];
     	$this->dilve_url_pass = isset($this->dilveSettings['dilve_pass']) ? $this->dilveSettings['dilve_pass'] : '';
-		$this->cegalSettings = get_option('cegal_settings');
+		$this->cegalSettings = get_option('covers_settings');
 		$this->cegal_url_host = "www.cegalenred.com/";
 		$this->cegal_url_path = "peticiones";
 		$this->cegal_url_user = $this->cegalSettings['cegal_user'];

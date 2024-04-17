@@ -6,5 +6,7 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'Inc\\Geslib\\' => array($baseDir . '/inc/Geslib'),
+    'Inc\\Covers\\' => array($baseDir . '/inc/Covers'),
     'Inc\\Biblio\\' => array($baseDir . '/inc'),
 );

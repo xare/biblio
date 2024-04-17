@@ -16,7 +16,7 @@
   <div class="tab-content">
     <div id="tab-1" class="tab-pane <?php echo !isset($_POST["edit_taxonomy"]) ? 'active' : '' ?>">
     <h3>Manage Custom Taxonomies</h3>
-    <table class="cpt-table">
+    <table class="biblio-table">
       <tr>
         <th>ID</th>
         <th>Singular Name</th>
@@ -25,7 +25,7 @@
       </tr>
     <?php
 
-    $options = get_option('starterkit_taxonomy') ?: [];
+    $options = get_option('biblio_taxonomy') ?: [];
 
     foreach( $options as $option ){
       $hierarchical = isset($option['hierarchical']) ? "TRUE" : "FALSE";
@@ -40,7 +40,7 @@
       echo "</form>";
 
       echo '<form method="post" action="options.php" class="inline-block">';
-      settings_fields('starterkit_taxonomy_settings');
+      settings_fields('biblio_taxonomy_settings');
       echo '<input type="hidden" name="remove" value="' . $option['taxonomy'] . '">';
       submit_button( 'Delete', 'delete small', 'submit', false, [
         'onclick'=> 'return confirm("Are you sure you want to delete this Custom Taxonomy? The data associated with it will not be deleted.")'
@@ -54,8 +54,8 @@
     <h3>Create a new Taxonomy </h3>
     <form method="post" action="options.php">
         <?php
-          settings_fields('starterkit_taxonomy_settings');
-          do_settings_sections( 'starterkit_taxonomy');
+          settings_fields('biblio_taxonomy_settings');
+          do_settings_sections( 'biblio_taxonomy');
           submit_button();
         ?>
       </form>
