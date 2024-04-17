@@ -355,10 +355,10 @@ class GeslibApiLines {
 
 	/**
 	 * process1L
-	 * EDITORIAL
-	 * 1L|B|codigo_editorial
-	 * 1L|Tipo movimiento|Codigo_editorial|Nombre|nombre_externo|País|
-	 * 1L|A|1|VARIAS|VARIAS|ES|
+	 * COLECCION EDITORIAL
+	 * 2|B|codigo_editorial
+	 * 2|Tipo movimiento|Codigo_editorial|Nombre|nombre_externo|País|
+	 * 2|A|1|VARIAS|VARIAS|ES|
 	 * @param  array $data
 	 * @param  int $log_id
 	 * @return void
