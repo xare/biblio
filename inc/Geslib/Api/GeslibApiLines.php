@@ -213,9 +213,11 @@ class GeslibApiLines {
 
 			$index = ( in_array( $line_array[0],['6E', '6TE', 'AUTBIO', 'B','LA'] ) ) ? 1 : 2;
 			$entity = match ( $line_array[0] ) {
+				'1L' => 'editorials',
 				'GP4' => 'product',
 				'AUT' => 'autors',
-				'3' => 'editorials',
+				'2' => 'colecciones',
+				'3' => 'product_cat',
 				'5' => 'categories',
 				'B' => 'product',
 				'LA' => 'product',
@@ -349,6 +351,27 @@ class GeslibApiLines {
 		$content_array = array_combine($keys, $data);
 		$content_array = $this->geslibApiSanitize->sanitize_content_array( $content_array );
 		$geslibApiDbLinesManager->insertData( $content_array, $data[1], $log_id , 'editorial');
+	}
+
+	/**
+	 * process1L
+	 * EDITORIAL
+	 * 1L|B|codigo_editorial
+	 * 1L|Tipo movimiento|Codigo_editorial|Nombre|nombre_externo|País|
+	 * 1L|A|1|VARIAS|VARIAS|ES|
+	 * @param  array $data
+	 * @param  int $log_id
+	 * @return void
+	 */
+	private function process2( array $data, int $log_id ): void {
+		$geslibApiDbLinesManager = new GeslibApiDbLinesManager;
+		$keys = self::$editorialKeys;
+		if ($data[1] === 'B') {
+			$keys = self::$editorialDeleteKeys;
+		}
+		$content_array = array_combine($keys, $data);
+		$content_array = $this->geslibApiSanitize->sanitize_content_array( $content_array );
+		$geslibApiDbLinesManager->insertData( $content_array, $data[1], $log_id , 'coleccion');
 	}
 
 	/**

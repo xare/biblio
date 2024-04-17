@@ -55,7 +55,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
             $filename
         );
 		try {
-			return (bool) !is_null($wpdb->get_var($query));
+			return (bool) $wpdb->get_var($query) > 0;
 		} catch(\Exception $e) {
 			error_log("This file has not been found into the database due to an error: ".$e->getMessage());
 			return false;
