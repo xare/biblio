@@ -71,9 +71,10 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 	 */
 	public function getLogQueuedFile(): string|false {
 		global $wpdb;
+		$table_name = $wpdb->prefix.self::GESLIB_LOG_TABLE;
 		$query = $wpdb->prepare(
             "SELECT filename
-			FROM $wpdb->prefix.self::GESLIB_LOG_TABLE
+			FROM {$table_name}
 			WHERE status = '%s'",
             'queued'
         );
