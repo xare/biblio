@@ -47,7 +47,6 @@
             id="'.$name.'"
             name="' . $option_name . '[' . $name . ']"
             value="' . esc_attr($value) . '"
-            placeholder="Add a value"
-            required>';
+            placeholder="Add a value">';
     }
 }

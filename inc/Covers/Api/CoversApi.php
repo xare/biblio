@@ -374,14 +374,14 @@ class CoversApi {
 		$batch_size = (isset($_POST['batch_size']) && $_POST['batch_size'] != null) ? $_POST['batch_size'] : -1;
 		$offset = (isset($_POST['offset']) && $_POST['offset'] != null) ? $_POST['offset']: 0;
 
-		$query = 'SELECT * FROM {$wpdb->posts}
-			WHERE ID NOT IN (
-				SELECT post_id from {$wpdb->postmeta}
-				WHERE meta_key = "_thumbnail_id"
-			)
-			AND post_type = "product"
-			AND post_status = "publish"
-			LIMIT {$offset}, {$batch_size}';
+		$query = $wpdb->prepare("SELECT * FROM {$wpdb->posts}
+								WHERE ID NOT IN (
+									SELECT post_id from {$wpdb->postmeta}
+									WHERE meta_key = '_thumbnail_id'
+								)
+								AND post_type = 'product'
+								AND post_status = 'publish'
+								LIMIT %d, %d", $offset, $batch_size);
 		$products = $wpdb->get_results( $query, OBJECT_K );
 
 		$eans = [];
