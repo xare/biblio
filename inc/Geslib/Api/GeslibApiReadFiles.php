@@ -43,9 +43,9 @@ class GeslibApiReadFiles {
 	 * - GeslibProcessAllCommand.php
 	 * - GeslibStoreProductsCommand.php
 	 *
-	 * @return mixed
+	 * @return array
 	 */
-	public function readFolder(): mixed {
+	public function readFolder(): array {
 		$files = (array) glob( $this->mainFolderPath . 'INTER*' );
 		$zipFolder = (string) $this->mainFolderPath . 'zip/';
 		// Check if the zip folder exists, if not create it
@@ -79,7 +79,7 @@ class GeslibApiReadFiles {
 			$filenames[] = $fileInfo['filename'];
 			$this->_insert2geslibLog( $fileInfo['filename'] );
 		}
-		return $filenames;
+		return (array) $filenames;
 	}
 	/**
 	 * insert2geslibLog
