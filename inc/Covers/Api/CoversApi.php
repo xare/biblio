@@ -105,30 +105,31 @@ class CoversApi {
 			# Get title
 			foreach($xml_book->Title as $title) {
 				if ($title->TitleType == "01") {
-				$book["title"] = (string)$title->TitleText;
-				if ($title->Subtitle) {
-					$book["subtitle"] = (string)$title->Subtitle;
-				}
+					$book["title"] = (string)$title->TitleText;
+					if ($title->Subtitle) {
+						$book["subtitle"] = (string)$title->Subtitle;
+					}
 				}
 			}
 
 			//Get Publisher
 			foreach ($xml_book->Publisher as $publisher) {
 				if ($publisher->NameCodeType == 02) {
-				$book['publisher'] = (string)$xml_book->Publisher->PublisherName;
+					$book['publisher'] = (string)$xml_book->Publisher->PublisherName;
 				}
 			}
 
 			# Get author
 			foreach($xml_book->Contributor as $contributor) {
 				if ($contributor->ContributorRole == "A01") {
-				$author_name = (string) $contributor->PersonNameInverted;
-				$author_description = (string) $contributor->BiographicalNote;
-				if ($author_description) {
-					$book["author"][] = array('name' => $author_name, 'description' => $author_description);
-				} else {
-					$book["author"][] = array('name' => $author_name);
-				}
+					$author_name = (string) $contributor->PersonNameInverted;
+					$author_description = (string) $contributor->BiographicalNote;
+					if ($author_description) {
+						$book["author"][] = ['name' => $author_name,
+												'description' => $author_description];
+					} else {
+						$book["author"][] = ['name' => $author_name];
+					}
 				}
 			}
 			# Get measurements
@@ -172,7 +173,7 @@ class CoversApi {
 						}
 						break;
 					case "23":
-						$book["preview_url"] = $this->get_file_url((string) $description->TextLink, $isbn);
+						$book["preview_url"] = $this->get_dilve_file_url((string) $description->TextLink, $isbn, 'dilve');
 						#print "\n---> Recogido fichero de preview: " . $book["*preview_url"] ." --- ";
 						#print_r($description);
 						break;
@@ -190,7 +191,7 @@ class CoversApi {
 					case "06":
 						# Its better covers uris
 						if (!isset($book["cover_url"]) || $media->MediaFileLinkTypeCode == "06") {
-						$book["cover_url"] = $this->get_file_url((string) $media->MediaFileLink, $isbn);
+						$book["cover_url"] = $this->get_dilve_file_url((string) $media->MediaFileLink, $isbn, 'dilve');
 						}
 					break;
 					# Cover miniature
@@ -198,14 +199,14 @@ class CoversApi {
 						break;
 					# Author image
 					case "08":
-						$book["image_author_url"] = $this->get_file_url((string) $media->MediaFileLink, $isbn);
+						$book["image_author_url"] = $this->get_dilve_file_url((string) $media->MediaFileLink, $isbn, 'dilve');
 						#print "\n---> Recogido imagen del autor: " . $book["*image_author_url"];
 						#print "\n---> Formato: " . $media->MediaFileFormatCode;
 						#print "\n---> Tipo de Enlace: " . $media->MediaFileLinkTypeCode;
 						break;
 					# Publisher logo
 					case "17":
-						$book["image_publisher_url"] = $this->get_file_url((string) $media->MediaFileLink, $isbn);
+						$book["image_publisher_url"] = $this->get_dilve_file_url((string) $media->MediaFileLink, $isbn, 'dilve');
 						#print "\n---> Recogido logo de editorial: " . $book["*image_publisher_url"];
 						#print "\n---> Formato: " . $media->MediaFileFormatCode;
 						#print "\n---> Tipo de Enlace: " . $media->MediaFileLinkTypeCode;
@@ -231,7 +232,7 @@ class CoversApi {
   	}
 
 	/**
-	 * Function CoversSearch::get_file_url
+	 * Function CoversSearch::get_dilve_file_url
 	 *
 	 * @param string $filename
 	 *   local or remote filename
@@ -240,17 +241,19 @@ class CoversApi {
 	 * @return string
 	 *   Full URL of requested resource
 	 */
-  	private function get_file_url( string $filename, string $isbn ): string {
+  	private function get_dilve_file_url( string $filename, string $isbn, string $type ): string {
     	# If URL is a covers reference, complete full request
-    	if (strpos($filename, 'http://') === 0 || strpos($filename, 'https://') === 0) {
-      		$url = $filename;
-    	} else {
-      		$url  = 'http://'.$this->url_host.$this->url_path.
-					'/getResourceX.do?user='.$this->url_user.
-					'&password='.$this->url_pass;
-      		$url .= '&identifier='.$isbn.
-					'&resource='.urlencode($filename);
-    	}
+    	if ($type == 'dilve') {
+			if (strpos($filename, 'http://') === 0 || strpos($filename, 'https://') === 0) {
+				$url = $filename;
+			} else {
+				$url  = 'http://'.$this->dilve_url_host.$this->dilve_url_path.
+						'/getResourceX.do?user='.$this->dilve_url_user.
+						'&password='.$this->dilve_url_pass;
+				$url .= '&identifier='.$isbn.
+						'&resource='.urlencode($filename);
+			}
+		}
     	return $url;
   	}
 
