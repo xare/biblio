@@ -100,6 +100,13 @@ class GeslibApiLines {
 		"",
 		""
 	];
+	static array $coleccionKeys = [
+		"type",
+		"action",
+		"editorial_geslib_id",
+		"geslib_id",
+		"name",
+	];
 	static array $categoriaKeys = [
 		"type",
 		"action",
@@ -344,7 +351,7 @@ class GeslibApiLines {
 	 */
 	private function process1L( array $data, int $log_id ): void {
 		$geslibApiDbLinesManager = new GeslibApiDbLinesManager;
-		$keys = self::$editorialKeys;
+		$keys = self::$coleccionKeys;
 		if ($data[1] === 'B') {
 			$keys = self::$editorialDeleteKeys;
 		}
