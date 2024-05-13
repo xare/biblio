@@ -26,8 +26,8 @@ final class Init
       /* CoversHelloCommand::class,
       CoversMediaCleanup::class, */
       CoversScanProductsFormController::class,
-     /*  Enqueue::class,
-      Cron::class, */
+     /*  Enqueue::class,*/
+      Cron::class,
     ];
   }
 

@@ -19,9 +19,9 @@ class GeslibApiLines {
 			"geslib_id"
 	];
 	static array $editorialDeleteKeys = [
-		"type",
-		"action",
-		"geslib_id"
+			"type",
+			"action",
+			"geslib_id"
 	];
 	static array $categoriaDeleteKeys = [
 			"type",
@@ -210,9 +210,9 @@ class GeslibApiLines {
 		$index = 0;
 		$i = 0;
 		foreach ($lines as $line) {
-
-			$line_array = explode('|', $line);
 			$line = $this->sanitizeLine( $line );
+			$line_array = explode('|', $line);
+
 			if( $this->isUnnecessaryLine( $line ) ) continue;
 			if( !$this->isInProductKey( $line ) ) continue;
 			if( $this->isInEditorials( $line ) ) continue;
@@ -245,7 +245,6 @@ class GeslibApiLines {
 				'action' => $action,
 			];
 			$batch[] = $item;
-
 			if (count($batch) >= $batch_size) {
 				$geslibApiDbQueueManager->insertLinesIntoQueue( $batch );
 				$batch = [];
@@ -254,6 +253,7 @@ class GeslibApiLines {
 		}
 		// Don't forget the last batch
 		if ( !empty( $batch ) ) {
+			error_log( var_export( $line, true ) );
 			$geslibApiDbQueueManager->insertLinesIntoQueue( $batch );
 		}
 
@@ -351,7 +351,7 @@ class GeslibApiLines {
 	 */
 	private function process1L( array $data, int $log_id ): void {
 		$geslibApiDbLinesManager = new GeslibApiDbLinesManager;
-		$keys = self::$coleccionKeys;
+		$keys = self::$editorialKeys;
 		if ($data[1] === 'B') {
 			$keys = self::$editorialDeleteKeys;
 		}
@@ -372,7 +372,7 @@ class GeslibApiLines {
 	 */
 	private function process2( array $data, int $log_id ): void {
 		$geslibApiDbLinesManager = new GeslibApiDbLinesManager;
-		$keys = self::$editorialKeys;
+		$keys = self::$coleccionKeys;
 		if ($data[1] === 'B') {
 			$keys = self::$editorialDeleteKeys;
 		}

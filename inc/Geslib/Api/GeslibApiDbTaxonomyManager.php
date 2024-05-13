@@ -4,7 +4,7 @@ namespace Inc\Geslib\Api;
 
 class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 
-    public function storeEditorials( $editorial ) {
+    public function storeEditorials( int $geslib_id, $editorial ) {
 		$term_name = $editorial->content;
 		$term_slug = $this->_create_slug( $term_name );
 		$term_description = $term_name;
@@ -38,7 +38,47 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 		return get_term($term_data['term_id'], 'editorials');
     }
 
-	public function storeAuthors( $author ) {
+	public function storeColecciones( int $geslib_id, $coleccion ) {
+		error_log( var_export( $coleccion,true ) );
+		$coleccion = json_decode($coleccion);
+		$term_name = $coleccion->name;
+		if ( $coleccion->content === null ){
+			error_log( var_export( $coleccion,true ) );
+			return false;
+		}
+		$term_slug = $this->_create_slug( $term_name );
+		$term_description = $term_name;
+		$term = term_exists( $term_name, 'colecciones' ); // check if term already exists
+		if ( 0 !== $term && null !== $term ) {
+			// If the term exists, update it
+			$term_data = wp_update_term( $term['term_id'], 'colecciones', [
+				'name' => $term_name,
+				'slug' => $term_slug,
+				'description' => $term_description,
+			]);
+    	} else {
+        	// Otherwise, insert a new term
+        	$term_data = wp_insert_term(
+							$term_name,   // the term
+							'colecciones', // the taxonomy
+							[
+								'description'=> $term_description,
+								'slug' => $term_slug,
+							]);
+    	}
+
+		add_term_meta($term_data['term_id'], 'coleccion_geslib_id', $coleccion->geslib_id);
+		$coleccion_geslib_id = get_term_meta( $term_data['term_id'], 'coleccion_geslib_id', true );
+
+        // Check for errors
+        if ( is_wp_error($term_data) ) {
+            // Handle the error here
+            echo $term_data->get_error_message();
+        }
+		return get_term($term_data['term_id'], 'colecciones');
+    }
+
+	public function storeAuthors( int $geslib_id, $author ) {
 		$geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
 		$term_name = $author->content;
 		$term_slug = $this->_create_slug( $term_name );
@@ -68,13 +108,6 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
         if ( is_wp_error($term_data) ) {
             // Handle the error here
             error_log($term_data->get_error_message());
-			$geslibApiDbLoggerManager->geslibLogger( 0, $author->geslib_id, 'error', 'store authors', 'author', [
-				'message' => 'Function storeAuthors: ' . $term_data->get_error_message() ,
-				'file' => basename(__FILE__),
-				'class' => __CLASS__,
-				'function' => __METHOD__,
-				'line' => __LINE__,
-			]);
 			return false;
         }
 		return get_term($term_data['term_id'], 'autors');
@@ -124,6 +157,10 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 	}
 	public function storeEditorial( $geslib_id, $content){
 		$editorial = json_decode( $content);
+		if ( $editorial->name === null ){
+			error_log( var_export( $editorial,true ) );
+			return false;
+		}
 		$geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
         $geslibApiSanitize = new GeslibApiSanitize();
 		$term_name = $geslibApiSanitize->utf8_encode($editorial->name);
@@ -137,6 +174,8 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 				'slug' => $term_slug,
 				'description' => $term_description,
 			]);
+			error_log(var_export($term_data, true));
+			if( is_wp_error($term_data) ) return false;
 			update_term_meta($term_data['term_id'], 'editorial_geslib_id', $geslib_id);
     	} else {
         	// Otherwise, insert a new term
@@ -165,9 +204,12 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
      */
     public function storeAuthor( int $geslib_id, string $content): mixed {
 		$author = json_decode( $content );
+		error_log(var_export($author, true));
+		if ( $author === null ) return false;
 		$geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
 		$geslibApiSanitize = new GeslibApiSanitize;
 		$term_name = $geslibApiSanitize->utf8_encode($author->name);
+		if ( $term_name === null ) return false;
 		$term_slug = $this->_create_slug( $term_name );
 		$term_description = $term_name;
 		$term = term_exists( $term_name, 'autors' ); // check if term already exists
@@ -215,6 +257,70 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
         }
 		return get_term($term_data['term_id'], 'autors');
 	}
+
+	/**
+     * storeAuthor
+     *
+     * @param  int $geslib_id
+     * @param  string $content
+     * @return mixed
+     */
+    public function storeColeccion( int $geslib_id, string $content): mixed {
+		$coleccion = json_decode( $content );
+		error_log(var_export($coleccion, true));
+		if ( $coleccion === null ) return false;
+		$geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
+		$geslibApiSanitize = new GeslibApiSanitize;
+		$term_name = $geslibApiSanitize->utf8_encode($coleccion->name);
+		if ( $term_name === null ) return false;
+		$term_slug = $this->_create_slug( $term_name );
+		$term_description = $term_name;
+		$term = term_exists( $term_name, 'colecciones' ); // check if term already exists
+		if ( 0 !== $term && null !== $term ) {
+			// If the term exists, update it
+			try {
+				$term_data = wp_update_term( $term['term_id'], 'colecciones', [
+					'name' => $term_name,
+					'slug' => $term_slug,
+					'description' => $term_description,
+				]);
+				if (is_wp_error($term_data)) {
+					error_log($term_data->get_error_message());
+					return false;
+				}
+				$term_meta = update_term_meta($term_data['term_id'], 'author_geslib_id', $geslib_id);
+                return true;
+			} catch (\Exception $exception) {
+				error_log($exception->getMessage());
+				return false;
+			}
+    	} else {
+        	// Otherwise, insert a new term
+			try {
+        		$term_data = wp_insert_term(
+								$term_name,   // the term
+								'colecciones', // the taxonomy
+								[
+									'description'=> $term_description,
+									'slug' => $term_slug
+								]);
+				if ( is_wp_error($term_data) ) {
+					// Handle the error here
+					error_log( $term_data->get_error_message());
+					return false;
+				}
+				add_term_meta($term_data['term_id'],'coleccion_geslib_id', $geslib_id);
+				return true;
+			} catch(Exception $exception) {
+				error_log($exception->getMessage());
+				return false;
+			}
+    	}
+        // Check for errors
+
+		return get_term($term_data['term_id'], 'colecciones');
+	}
+
 
     public function storeProductCategory($product_category): mixed {
         $geslibApiSanitize = new GeslibApiSanitize;

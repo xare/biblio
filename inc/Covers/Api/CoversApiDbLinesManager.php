@@ -124,7 +124,7 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
         $wpdb->query($sql);
     }
 
-    function get_product_featured_image_html($product_id) {
+    public function get_product_featured_image_html($product_id) {
         // Check if the product ID is valid and a product exists
         if (!$product_id || !function_exists('wc_get_product')) {
             return 'Product not found.';

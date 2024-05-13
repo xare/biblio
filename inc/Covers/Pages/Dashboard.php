@@ -39,7 +39,7 @@ class Dashboard extends BaseController {
 		$this->pages = [
 			[
 				'page_title' => __('Covers','biblio'),
-				'menu_title' =>  __('covers','biblio'),
+				'menu_title' =>  __('Covers','biblio'),
 				'capability' => 'manage_options',
 				'menu_slug' => 'covers',
 				'callback' => [$this->callbacks, 'adminDashboard'] ,

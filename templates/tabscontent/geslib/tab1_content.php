@@ -91,6 +91,9 @@ use Inc\Geslib\Api\GeslibApiReadFiles;
         <li>Tareas en la cola "store_categories":<br />
             <strong data-target="total-categories-queue"><?php echo $geslibApiDbQueueManager->countGeslibQueue('store_categories'); ?></strong>
         </li>
+        <li>Tareas en la cola "store_colecciones":<br />
+            <strong data-target="total-colecciones-queue"><?php echo $geslibApiDbQueueManager->countGeslibQueue('store_colecciones'); ?></strong>
+        </li>
         <li>Productos almacenados:<br />
             <strong data-target="total-products"><?php echo $geslibApiDbProductsManager->getTotalNumberOfProducts(); ?></strong>
         </li>

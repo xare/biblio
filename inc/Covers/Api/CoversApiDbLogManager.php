@@ -11,18 +11,19 @@ class CoversApiDbLogManager extends CoversApiDbManager {
 	 * @param  int $linesCount
 	 * @return int|false The number or rows inserted on false on error.
 	 */
-	public function insertLogData( string $status, int $totalProducts ) :mixed {
+	public function insertLogData( string $status) :mixed {
 		global $wpdb;
+		$coversApiDbManager = new CoversApiDbManager;
 		$coversLogValues = [
 			date('Y-m-d H:i:s'), // start_date
 			null, // end_date
 			$status, // status
-            $totalProducts, //get_total_products
+            $coversApiDbManager->countAllProducts(), //get_total_products
             0 // scanned_products
 		];
 		$insertArray = array_combine(self::$coversLogKeys, $coversLogValues);
 		try {
-			$wpdb->insert($wpdb->prefix . self::covers_LOG_TABLE,
+			$wpdb->insert($wpdb->prefix . self::COVERS_LOG_TABLE,
 						$insertArray,
 						['%s', '%s', '%s', '%d', '%d']);
             return $wpdb->insert_id;
@@ -41,7 +42,7 @@ class CoversApiDbLogManager extends CoversApiDbManager {
 	 */
 	public function setLogStatus( int $log_id, string $status ) :bool {
 		global $wpdb;
-		$table_name = $wpdb->prefix.self::covers_LOG_TABLE; // Replace with your actual table name if different
+		$table_name = $wpdb->prefix.self::COVERS_LOG_TABLE; // Replace with your actual table name if different
 		$data = [ 'status' => $status ];
 		if( $status == 'processed' ) {
 			$data[ 'end_date' ] = date('Y-m-d H:i:s');
