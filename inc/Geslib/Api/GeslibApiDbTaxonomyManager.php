@@ -81,6 +81,8 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 	public function storeAuthors( int $geslib_id, $author ) {
 		$geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
 		$term_name = $author->content;
+		$geslibApiSanitize = new GeslibApiSanitize;
+		$term_name = $geslibApiSanitize->utf8_encode($term_name);
 		$term_slug = $this->_create_slug( $term_name );
 		$term_description = $term_name;
 		$term = term_exists( $term_name, 'autors' ); // check if term already exists
@@ -122,8 +124,8 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
      */
     public function storeCategory( int $geslib_id, $content): mixed{
 		$product_category = json_decode( $content );
-		$geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
-		$term_name = $this->geslibApiSanitize->utf8_encode($product_category->name);
+		$geslibApiSanitize = new GeslibApiSanitize;
+		$term_name = $geslibApiSanitize->utf8_encode($product_category->name);
 		$term_slug = $this->_create_slug( $term_name );
 		$term_description = $term_name;
 		if( !term_exists( $term_name, 'product_cat' )) {
@@ -138,13 +140,13 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 					// you can add other properties here as per your needs
 				]
 			);
-			add_term_meta($result['term_id'],'category_geslib_id', $product_category->geslib_id);
+			add_term_meta($result['term_id'], 'category_geslib_id', $product_category->geslib_id);
 			$category_geslib_id = get_term_meta( $result['term_id'], 'category_geslib_id', true );
 
 			// Check for errors
 			if (is_wp_error($result)) {
 				// Handle error here
-				error_log($result->get_error_message());
+				error_log('Category did not get created for term slug'.$term_slug.' '.$result->get_error_message());
 				return false;
 			}
 

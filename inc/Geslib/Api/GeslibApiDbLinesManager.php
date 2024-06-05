@@ -38,7 +38,6 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
 		}
 	}
 
-
     /**
      * updateGeslibLines
      *
@@ -62,7 +61,6 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
 				['%d','%s','%s']
 			);
 			return true;
-
 		} catch( \Exception $exception ) {
             error_log('Failed to update gesli_lines table'. $exception->getMessage());
 			return false;

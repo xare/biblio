@@ -122,12 +122,12 @@ class GeslibApiLines {
 		"name"
 	];
 	static array $lineTypes = [
-		'1L', // Editoriales
+		//'1L', // Editoriales
 		'1A', // Compañías discográficas
 		//"1P", // Familias de papelería
 		//"1R", // Publicaciones de prensa
-		"2", // Colecciones editoriales
-		"3", // Materias
+		//"2", // Colecciones editoriales
+		//"3", // Materias
 		"GP4", // Artículos
 		"EB", // eBooks (igual que los libros)
 		"IEB", // Información propia del eBook
@@ -147,8 +147,8 @@ class GeslibApiLines {
 		//"B2", // Stock por centros
 		"E", // Estados de artículos
 		//"CLI", // Clientes
-		"AUT", // Autores
-		"AUTBIO", // Biografías de Autores
+		//"AUT", // Autores
+		//"AUTBIO", // Biografías de Autores
 		//"I", // Indicador de carga inicial. Cuando este carácter aparece en la primera línea, indica que se están enviando todos los datos y de todas las entidades
 		//"IPC", // Incidencias en pedidos de clientes
 		//"P", // Promociones de artículos (globales a todos los centros)
@@ -361,7 +361,7 @@ class GeslibApiLines {
 	}
 
 	/**
-	 * process1L
+	 * process2
 	 * COLECCION EDITORIAL
 	 * 2|B|codigo_editorial
 	 * 2|Tipo movimiento|Codigo_editorial|Nombre|nombre_externo|País|

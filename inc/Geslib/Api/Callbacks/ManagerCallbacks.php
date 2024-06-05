@@ -1,25 +1,49 @@
 <?php
 /**
- * @package geslib
+ * @package biblio
  */
 
- namespace Inc\Geslib\Base;
+ namespace Inc\Geslib\Api\Callbacks;
 
- class BaseController
+use Inc\Geslib\Base\BaseController;
+
+ class ManagerCallbacks extends BaseController
  {
-  public $plugin_path;
-  public $plugin_url;
-  public $plugin;
-  public $plugin_templates_path;
-  public array $managers;
 
-  public function __construct() {
-    $this->plugin_path = plugin_dir_path( dirname( __FILE__, 3));
-    $this->plugin_templates_path = plugin_dir_path( dirname( __FILE__, 3)).'templates';
-    $this->plugin_url = plugin_dir_url( dirname( __FILE__, 3));
-    $this->plugin = plugin_basename( dirname( __FILE__, 3) ) . '/biblio.php';
-    $this->managers = [
-      '1L' => 'Editoriales',
+  public function checkboxSanitize( $input ) {
+
+    $output = [];
+    foreach ( $this->managers as $key => $value ){
+      $output[$key] = isset( $input[$key] ) ? true : false;
+    }
+    return $output;
+  }
+
+  public function adminSectionManager() {
+    echo 'manage the Sections and Features of this plugin by activating the checkboxes in the list below';
+  }
+
+  public function checkboxField( $args )
+  {
+    $name = $args['label_for'];
+    $classes = $args['class'];
+    $option_name = $args['option_name'];
+    $checkbox = get_option( $option_name );
+    $checked = isset($checkbox[$name]) ? ($checkbox[$name] ? true : false ) : false;
+    echo "<div class='".$classes."'>
+          <input
+            class=''
+            type='checkbox'
+            id='" . $name . "'
+            name='" . $option_name . "[" . $name . "]'
+            value='1'".
+            ($checked ? " checked" : "") . ">
+              <label for='".$name."'><div></div></label>
+          </div>";
+  }
+  public static function getLineTypes() {
+    return [
+        '1L' => 'Editoriales',
         '1A' => 'Compañías discográficas',
         '1P' => 'Familias de papelería',
         '1R' => 'Publicaciones de prensa',
@@ -67,11 +91,5 @@
         'CAGRDTV' => 'Agrupaciones de descuentos de ventas: Cabecera',
         'LAGRDTV' => 'Agrupaciones de descuentos de ventas: Líneas'
     ];
-  }
-
-  public function activated(string $key)
-  {
-    $option = get_option('geslib');
-    return isset($option[$key]) ? $option[$key] : false;
-  }
- }
+}
+}
