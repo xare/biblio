@@ -122,12 +122,12 @@ class GeslibApiLines {
 		"name"
 	];
 	static array $lineTypes = [
-		//'1L', // Editoriales
+		'1L', // Editoriales
 		'1A', // Compañías discográficas
 		//"1P", // Familias de papelería
 		//"1R", // Publicaciones de prensa
 		//"2", // Colecciones editoriales
-		//"3", // Materias
+		"3", // Materias
 		"GP4", // Artículos
 		"EB", // eBooks (igual que los libros)
 		"IEB", // Información propia del eBook
@@ -147,7 +147,7 @@ class GeslibApiLines {
 		//"B2", // Stock por centros
 		"E", // Estados de artículos
 		//"CLI", // Clientes
-		//"AUT", // Autores
+		"AUT", // Autores
 		//"AUTBIO", // Biografías de Autores
 		//"I", // Indicador de carga inicial. Cuando este carácter aparece en la primera línea, indica que se están enviando todos los datos y de todas las entidades
 		//"IPC", // Incidencias en pedidos de clientes
@@ -414,11 +414,12 @@ class GeslibApiLines {
 	 * @return void
 	 */
 	private function process5( $data, $log_id ) {
-		$geslib_id = $data[2];
+		$geslib_category_id = $data[1];
+		$geslib_product_id = $data[2];
 		$content_array = [];
-		if($data[1] !== 0 && $data[1] != '') {
-			$content_array['categories'][$data[1]] = $data[2];
-			$this->mergeContent($geslib_id, $content_array, 'product', $log_id);
+		if($geslib_category_id !== 0 && $geslib_category_id != '') {
+			$content_array['categories'][$geslib_category_id] = $geslib_product_id;
+			$this->mergeContent($geslib_product_id, $content_array, 'product', $log_id);
 		}
 	}
 
@@ -464,7 +465,7 @@ class GeslibApiLines {
 	/**
 	 * processLA
 	 * Add an author to to a product
-	 * “LA”|código del autor (varchar(12))|Código de producto| Tipo de autor (A Autor, I Ilustrador, IC Ilustrador contraportada, IP ilustrador Portada, T traductor) | Orden
+	 * “LA”|Código de producto|código del autor (varchar(12))| Tipo de autor (A Autor, I Ilustrador, IC Ilustrador contraportada, IP ilustrador Portada, T traductor) | Orden
 	 *	LA|9047|6345|A|1|
 	 *
 	 * @param  mixed $data
@@ -475,7 +476,7 @@ class GeslibApiLines {
 		$geslib_author_id = $data[2];
 		$geslib_product_id = $data[1];
 		$content_array = [];
-		if($data[1] == 0 && $data[1] == '') { return false; }
+		if($geslib_product_id == 0 && $geslib_product_id == '') { return false; }
 
 		$content_array['authors'][$geslib_author_id] = $geslib_product_id;
 		$this->mergeContent($geslib_product_id, $content_array, 'product', $log_id);

@@ -29,6 +29,7 @@ class CoversApiDbManager {
         'isError', // boolean
         'error',   // string
         'attempts', // int
+        'type', // int
     ];
     public $coversLoggerKeys = [
         'date',
@@ -44,16 +45,13 @@ class CoversApiDbManager {
 		// Query for all products.
 		$batch_size = (int) (isset($_POST['batch_size']) && $_POST['batch_size'] != null) ? $_POST['batch_size'] : -1;
 		$offset = (int) (isset($_POST['offset']) && $_POST['offset'] != null) ? $_POST['offset']: 0;
-		/* $sql = "SELECT * FROM {$wpdb->posts}
+		$sql = "SELECT * FROM {$wpdb->posts}
 				WHERE ID NOT IN (
 									SELECT post_id from {$wpdb->postmeta}
 									WHERE meta_key = '_thumbnail_id'
 								)
 				AND post_type = 'product'
-				AND post_status = 'publish'"; */
-            $sql = "SELECT * FROM {$wpdb->posts}
-				WHERE post_type = 'product'
-				AND post_status = 'publish'";
+				AND post_status = 'publish'"; 
 
 		if ($batch_size != -1) {
 			$sql .= " LIMIT %d, %d";
@@ -61,7 +59,7 @@ class CoversApiDbManager {
 		} else {
 			$query = $wpdb->prepare($sql);
 		}
-		return $wpdb->get_results( $query, OBJECT_K );
+		return $wpdb->get_results( $query, ARRAY_A );
 
     }
     /**
@@ -75,14 +73,14 @@ class CoversApiDbManager {
     public function attachFile( string $filepath, mixed $data, string $filename ): mixed {
         // Validate data before proceeding
         if ( empty( $data ) ) {
-            error_log( var_export( 'Data is empty. Skipping file creation.',true ));
+            error_log( "[BIBLIO - Covers Api] Data is empty. Skipping file creation.");
             return false;
         }
         try {
             file_put_contents( $filepath, $data );
-            error_log(var_export( 'FILE SUCCES FULLY STORED IN THE SYSTEM at' . $filepath, true ));
+            error_log('[BIBLIO - Covers Api] FILE SUCCES FULLY STORED IN THE SYSTEM at' . $filepath);
         } catch ( \Exception $exception ) {
-            error_log( var_export( 'Could not create file: ' . $exception->getMessage() ));
+            error_log('[BIBLIO - Covers Api] Could not create file: ' . $exception->getMessage() );
             return false;
         }
 		return $this->insertAttachment( $filename, $filepath );
@@ -185,7 +183,7 @@ class CoversApiDbManager {
                     update_post_meta($product_id, 'covers_url', $url);
                     return true;
                 } catch (\Exception $e) {
-                    error_log('Failed to update the covers_url custom field: '.$e->getMessage());
+                    error_log('[BIBLIO - Covers Api] Failed to update the covers_url custom field: '.$e->getMessage());
                     return false;
                 }
             }
@@ -232,7 +230,7 @@ class CoversApiDbManager {
             wp_update_attachment_metadata( $attachment_id, $attachment_metadata );
             return $attachment_id ;
         } catch(\Exception $exception) {
-            error_log( "Exception: ".$exception->getMessage() );
+            error_log( "[BIBLIO - Covers Api] Exception: ".$exception->getMessage() );
             return 0;
         }
     }

@@ -33,6 +33,9 @@ use Inc\Covers\Api\CoversApiLogListTable;
 
         $attempts_sql = "SELECT DISTINCT attempts FROM {$linesTable}";
         $attempts = $wpdb->get_col($attempts_sql);
+
+        $type_sql = "SELECT DISTINCT type FROM {$linesTable}";
+        $types = $wpdb->get_col($type_sql);
         ?>
     <form method="post">
         <select name="filter_isbn">
@@ -73,6 +76,14 @@ use Inc\Covers\Api\CoversApiLogListTable;
             <?php foreach ($errors as $error): ?>
                 <option value="<?php echo esc_attr($error); ?>" <?php selected(isset($_POST['filter_error']) && $_POST['filter_error'] === $error); ?>>
                     <?php echo esc_html($error); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <select name="filter_type">
+            <option value="">All Types</option>
+            <?php foreach ($types as $type): ?>
+                <option value="<?php echo esc_attr($type); ?>" <?php selected(isset($_POST['filter_type']) && $_POST['filter_type'] === $type); ?>>
+                    <?php echo esc_html($type); ?>
                 </option>
             <?php endforeach; ?>
         </select>

@@ -48,13 +48,17 @@
                 $error = sanitize_text_field( $_POST['filter_error'] );
                 $where = $wpdb->prepare( ' WHERE error = %s', $error );
             }
-            if ( isset( $_POST['filter_tries'] ) && !empty( $_POST['filter_tries'] )) {
-                $tries = sanitize_text_field( $_POST['filter_tries'] );
-                $where = $wpdb->prepare( ' WHERE tries = %d', $tries );
+            if ( isset( $_POST['filter_attempts'] ) && !empty( $_POST['filter_attempts'] )) {
+                $attempts = sanitize_text_field( $_POST['filter_attempts'] );
+                $where = $wpdb->prepare( ' WHERE attempts = %d', $attempts );
             }
             if ( isset( $_POST['filter_log_id'] ) && !empty( $_POST['filter_log_id'] )) {
                 $log_id = sanitize_text_field( $_POST['filter_log_id'] );
                 $where = $wpdb->prepare( ' WHERE log_id = %d', $log_id );
+            }
+            if ( isset( $_POST['filter_type'] ) && !empty( $_POST['filter_type'] )) {
+                $type = sanitize_text_field( $_POST['filter_type'] );
+                $where = $wpdb->prepare( ' WHERE type = %s', $type );
             }
 
             $orderby = isset( $_GET['orderby'] ) ? trim( $_GET['orderby'] ): "id";
@@ -67,7 +71,8 @@
                             OR path LIKE '%{$search_term}%'
                             OR url_origin LIKE '%{$search_term}%'
                             OR url_target LIKE '%{$search_term}%'
-                            OR error LIKE '%{$search_term}%'";
+                            OR error LIKE '%{$search_term}%'
+                            OR type LIKE '%{$search_term}%'";
             }
             // First, get the total count of items
             $sql_count = "SELECT COUNT(*) FROM {$linesTable} {$where}";
@@ -119,7 +124,8 @@
                 'date' => 'Date',
                 'isError' => 'Is Error',
                 'error' => 'Error',
-                'tries' => 'Tries',
+                'attempts' => 'Attempts',
+                'type' => 'Type',
             ];
             return $columns;
         }
@@ -140,7 +146,8 @@
                 'date' => ['date', false],
                 'isError' => ['isError', false],
                 'error' => ['error', false],
-                'tries' => ['tries', false],
+                'attempts' => ['attempts', false],
+                'type' => ['type', false],
             ];
         }
 
@@ -153,11 +160,12 @@
                 'path' => $item[$column_name],
                 'booktitle' => "<a href='post.php?post=" . $item['book_id'] . "&action=edit' target='_blank'>" . $item[$column_name] . "</a>",
                 'url_origin' => "<a href='" . $item[$column_name] . "' target='_blank'>" . $item[$column_name] . "</a>",
-                'url_target' => $item[$column_name],
+                'url_target' => "<a href='" . $item[$column_name] . "' target='_blank'>" .$item[$column_name] . "</a>",
                 'date' => $item[$column_name],
                 'error' => $item[$column_name],
                 'isError' => $item[$column_name],
-                'tries' => $item[$column_name],
+                'attempts' => $item[$column_name],
+                'type' => $item[$column_name],
                 'image' => $coversApiDbLinesManager->get_product_featured_image_html($item['book_id']),
                 default => 'no value',
             };

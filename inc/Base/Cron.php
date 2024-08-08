@@ -44,28 +44,28 @@ class Cron extends BaseController {
         $queuetypes = ['store_products', 'build_content', 'store_autors', 'store_categories', 'store_editorials', 'store_lines', 'store_colecciones'];
         foreach( $queuetypes as $queuetype ) {
             $geslibApiDbQueueManager->processFromQueue( $queuetype );
-            error_log('Processing previous queues: '. $queuetype);
+            error_log('[BIBLIO - Geslib Cron] Processing previous queues: '. $queuetype);
         }
         while( $geslibApiDbLogManager->checkLoggedStatus() ) {
             $log_id = $geslibApiDbLogManager->getGeslibLoggedId();
-            error_log('New process: '. $log_id);
+            error_log('[BIBLIO - Geslib Cron] New process: '. $log_id);
             if ( !$geslibApiDbLogManager->isQueued() ){
                 $geslibApiDbLogManager->setLogStatus( $log_id, 'queued' );
-                error_log('Set log id: '. $log_id . ' to queued.');
+                error_log('[BIBLIO - Geslib Cron] Set log id: '. $log_id . ' to queued.');
             } else {
                 $geslibApiDbQueueManager->deleteItemsFromQueue( 'store_lines' );
-                error_log('Remove Store Lines');
+                error_log('[BIBLIO - Geslib Cron] Remove Store Lines');
             }
             $geslibApiLines->storeToLines($log_id);
-            error_log('Store to lines');
+            error_log('[BIBLIO - Geslib Cron] Store to lines');
             foreach( $queuetypes as $queuetype ) {
                 $geslibApiDbQueueManager->processFromQueue( $queuetype );
-                error_log('Process '.$queuetype );
+                error_log('[BIBLIO - Geslib Cron] Process '.$queuetype );
             }
             $geslibApiDbLinesManager->truncateGeslibLines();
-            error_log('Truncate Geslib Lines');
+            error_log('[BIBLIO - Geslib Cron] Truncate Geslib Lines');
             $geslibApiDbLogManager->setLogStatus( $log_id, 'processed');
-            error_log('Set to processed');
+            error_log('[BIBLIO - Geslib Cron] Set to processed');
         }
     }
     /**

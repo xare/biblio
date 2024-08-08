@@ -15,7 +15,7 @@ class GeslibApi {
         $allowed_types = ['emergency', 'alert', 'critical', 'error', 'warning', 'notice', 'info', 'debug'];
 
         if (!in_array($type, $allowed_types)) {
-            error_log('Invalid log type provided: ' . $type);
+            error_log('[BIBLIO - Geslib Api]  Invalid log type provided: ' . $type);
             return;
         }
 

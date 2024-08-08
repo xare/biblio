@@ -19,7 +19,7 @@ class CoversScanProductsCommand {
     }
 	public function register() {
         if ( class_exists( 'WP_CLI' ) ) {
-            WP_CLI::add_command( 'dilve scanProducts', [$this, 'execute'] );
+            WP_CLI::add_command( 'covers scanProducts', [$this, 'execute'] );
         }
     }
     /**
@@ -30,7 +30,7 @@ class CoversScanProductsCommand {
      *
      * ## EXAMPLES
      *
-     *     wp dilve scanProducts
+     *     wp covers scanProducts
      *
      * @when after_wp_load
      */
@@ -59,7 +59,7 @@ class CoversScanProductsCommand {
                     continue;
                 }
                 WP_CLI::line( 'COVER URL:' . $book['cover_url'] );
-                $dilveApiDbLinesManager->set_origin_url($line_id, $book['cover_url']);
+                $dilveApiDbLinesManager->set_url_origin($line_id, $book['cover_url']);
                 $dilveApiDbLinesManager->setBook($product->get_title(), $product->get_id(), $line_id);
                 if ($cover_post = $this->dilveApi->create_cover($book['cover_url'], $ean.'.jpg')){
                     $dilveApiDbManager->set_featured_image_for_product($cover_post->ID, $ean);

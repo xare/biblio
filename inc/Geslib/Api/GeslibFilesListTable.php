@@ -6,7 +6,7 @@ class GeslibFilesListTable extends WP_List_Table {
     public function __construct() {
         parent::__construct([
             'singular' => 'geslib_file',  // Singular label of the table
-            'plural'   => 'geslib_filess', // Plural label of the table
+            'plural'   => 'geslib_files', // Plural label of the table
             'ajax'     => true             // Does this table support ajax?
         ]);
     }
@@ -63,6 +63,9 @@ class GeslibFilesListTable extends WP_List_Table {
                 '3a' => $lineCounts['3A'],
                 '3m' => $lineCounts['3M'],
                 '3b' => $lineCounts['3B'],
+                'AUTa' => $lineCounts['AUTA'],
+                'AUTm' => $lineCounts['AUTM'],
+                'AUTb' => $lineCounts['AUTB'],
             ];
         }
         // Determine what page the user is currently looking at
@@ -88,6 +91,9 @@ class GeslibFilesListTable extends WP_List_Table {
             '3a' => 'Categoría Creada',
             '3m' => 'Modificada',
             '3b' => 'Borrada',
+            'AUTa' => 'Autor Creado',
+            'AUTm' => 'Modificada',
+            'AUTb' => 'Borrada',
         ];
         return $columns;
     }
@@ -111,6 +117,9 @@ class GeslibFilesListTable extends WP_List_Table {
             '3a' => ['Categoría Creada', false],
             '3m' => ['Modificada', false],
             '3b' => ['Borrada', false],
+            'AUTa' => ['Autor Creada', false],
+            'AUTm' => ['Modificada', false],
+            'AUTb' => ['Borrada', false],
         ];
     }
     public function column_default( $item, $column_name ) {
@@ -128,6 +137,9 @@ class GeslibFilesListTable extends WP_List_Table {
             '3a' => $item[$column_name],
             '3m' => $item[$column_name],
             '3b' => $item[$column_name],
+            'AUTa' => $item[$column_name],
+            'AUtm' => $item[$column_name],
+            'AUTb' => $item[$column_name],
             default => 'no value',
         };
     }

@@ -8,10 +8,11 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
                         int $log_id,
                         string $isbn,
                         string $path = '',
+                        string $type = 'dilve',
                         string $url_origin = '',
                         string $url_target = '',
                         string $error = '',
-                        int $attempts = 0
+                        int $attempts = 0,
                           ) :mixed {
 		global $wpdb;
         $table_name = $wpdb->prefix.self::COVERS_LINES_TABLE; // Replace with your actual table name if different
@@ -24,7 +25,8 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
             date('Y-m-d H:i:s'), // start_date
             false,
 			$error, // error
-            $attempts // scanned_products
+            $attempts, // scanned_products
+            $type, // dilve|cegal
 		];
 		$insertArray = array_combine(self::$coversLinesKeys, $coversLinesValues);
 
@@ -38,12 +40,12 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
             } else {
                 $wpdb->insert($wpdb->prefix . self::COVERS_LINES_TABLE,
 						$insertArray,
-						['%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d']);
+						['%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s']);
                 return $wpdb->insert_id;
             }
 
 		} catch (\Exception $e) {
-            error_log('This line has not been properly inserted into the database due to an error: '.$e->getMessage());
+            error_log('[BIBLIO - Covers Api] This line has not been properly inserted into the database due to an error: '.$e->getMessage());
             return false;
         }
 	}
@@ -73,7 +75,7 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
         }
     }
 
-    public function set_origin_url( int $id, string $origin_url ): bool {
+    public function set_url_origin( int $id, string $origin_url ): bool {
         global $wpdb;
         $table_name = $wpdb->prefix.self::COVERS_LINES_TABLE; // Replace with your actual table name if different
         $data = [ 'url_origin' => $origin_url ];
@@ -125,9 +127,10 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
     }
 
     public function get_product_featured_image_html($product_id) {
+        return $product_id;
         // Check if the product ID is valid and a product exists
         if (!$product_id || !function_exists('wc_get_product')) {
-            return 'Product not found.';
+            return 'Product ID not found.';
         }
 
         $product = wc_get_product($product_id);

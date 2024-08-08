@@ -28,7 +28,7 @@ class CoversApiDbLogManager extends CoversApiDbManager {
 						['%s', '%s', '%s', '%d', '%d']);
             return $wpdb->insert_id;
 		} catch (\Exception $e) {
-			error_log("This line has not been properly inserted into the database due to an error: ".$e->getMessage());
+			error_log("[BIBLIO - Covers Api] This line has not been properly inserted into the database due to an error: ".$e->getMessage());
             return false;
         }
 	}

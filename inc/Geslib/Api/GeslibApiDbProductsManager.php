@@ -131,14 +131,7 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 			try {
 				$product_id = $product->save();
 			} catch(\Exception $exception) {
-				error_log('Failed to store product'. $exception->getMessage());
-				$this->geslibApiDbLoggerManager->geslibLogger(0, $geslib_id, 'error', 'store_product', 'woocommerce_product', [
-                    'message' => "Product has NOT been queued: ".$exception->getMessage(),
-                    'file' => basename(__FILE__),
-                    'class' => __CLASS__,
-                    'function' => __METHOD__,
-                    'line' => __LINE__,
-                ]);
+				error_log('[Biblio - Geslib ERROR] Failed to store product'. $exception->getMessage());
 			}
 
 			if( isset($ean) ){
@@ -171,14 +164,7 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 				try {
 					wp_set_object_terms($product_id, $editorial_term, 'editorials', true);
 				} catch(\Exception $exception) {
-					error_log('Term was not properly assigned to product: '. $exception->getMessage());
-					$this->geslibApiDbLoggerManager->geslibLogger(0, $geslib_id, 'error', 'store_product', 'woocommerce_product', [
-						'message' => "Term was not properly assigned to product: ".$exception->getMessage(),
-						'file' => basename(__FILE__),
-						'class' => __CLASS__,
-						'function' => __METHOD__,
-						'line' => __LINE__,
-					]);
+					error_log('[Biblio - Geslib ERROR] Term was not properly assigned to product: '. $exception->getMessage());
 				}
 			}
 
@@ -204,7 +190,7 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 					try {
 						wp_set_object_terms( $product_id, $author_term, 'autors', true );
 					} catch( \Exception $exception ){
-						error_log( 'Failed to store author with id'. $author_term.' to product with id'. $product_id.': '.$exception->getMessage() );
+						error_log( '[Biblio - Geslib ERROR] Failed to store author with id'. $author_term.' to product with id'. $product_id.': '.$exception->getMessage() );
 						continue;
 					}
 				}
@@ -232,27 +218,21 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 					$category_terms = wp_list_pluck($categories, 'term_id');
 
 					// Remove 'Uncategorized' category if other categories exist
-					$uncategorized_term_id = get_term_by('slug', 'uncategorized', 'product_cat')->term_id;
-					if (in_array($uncategorized_term_id, $category_terms)) {
-						if (count($category_terms) > 1) { // Check if there are other categories assigned
-							$key = array_search($uncategorized_term_id, $category_terms);
-							unset($category_terms[$key]);
+					if(get_term_by('slug', 'uncategorized', 'product_cat')) {
+						$uncategorized_term_id = get_term_by('slug', 'uncategorized', 'product_cat')->term_id;
+						if (in_array($uncategorized_term_id, $category_terms)) {
+							if (count($category_terms) > 1) { // Check if there are other categories assigned
+								$key = array_search($uncategorized_term_id, $category_terms);
+								unset($category_terms[$key]);
+							}
 						}
 					}
-
 					foreach ($category_terms as $category_term) {
 						// Assign each category to the product, excluding 'Uncategorized' if applicable
 						try {
 							wp_set_object_terms($product_id, $category_term, 'product_cat', true);
 						} catch(\Exception $exception) {
-							error_log('Term was not properly assigned to product: '. $exception->getMessage());
-							$this->geslibApiDbLoggerManager->geslibLogger(0, $geslib_id, 'error', 'store_product', 'woocommerce_product', [
-								'message' => "Term was not properly assigned to product: ".$exception->getMessage(),
-								'file' => basename(__FILE__),
-								'class' => __CLASS__,
-								'function' => __METHOD__,
-								'line' => __LINE__,
-							]);
+							error_log('[Biblio - Geslib ERROR] Term was not properly assigned to product: '. $exception->getMessage());
 						}
 					}
 				}

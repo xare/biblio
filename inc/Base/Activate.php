@@ -109,6 +109,7 @@ class Activate {
             `isError` boolean,
             `error` varchar(255) NOT NULL,
             `attempts` mediumint(9) NOT NULL,
+            `type` varchar(255) NOT NULL,
             PRIMARY KEY (`id`)
         ) $charset_collate;";
 

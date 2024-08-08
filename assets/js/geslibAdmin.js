@@ -54,6 +54,8 @@ async function makeAjaxRequest( action, additionalData = null ) {
 
 async function updateProgress( action, geslibContainer ) {
     const response = await makeAjaxRequest(action);
+    console.info(response);
+    console.info(response.data);
     const JsonData = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
 
     if ( response.success ) {

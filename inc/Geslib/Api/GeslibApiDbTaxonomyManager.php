@@ -33,7 +33,8 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
         // Check for errors
         if ( is_wp_error($term_data) ) {
             // Handle the error here
-            echo $term_data->get_error_message();
+           error_log($term_data->get_error_message());
+		   return false;
         }
 		return get_term($term_data['term_id'], 'editorials');
     }
@@ -73,7 +74,8 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
         // Check for errors
         if ( is_wp_error($term_data) ) {
             // Handle the error here
-            echo $term_data->get_error_message();
+            error_log($term_data->get_error_message());
+			return false;
         }
 		return get_term($term_data['term_id'], 'colecciones');
     }

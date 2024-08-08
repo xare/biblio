@@ -16,7 +16,7 @@ class Cron extends BaseController {
 
         //add_filter( 'cron_schedules', [ $this,'custom_cron_schedule'] );
         if ( ! wp_next_scheduled( 'covers_cron_event' ) ) {
-            wp_schedule_event( time(), 'daily', 'covers_cron_event' );
+            wp_schedule_event( time(), 'twicedaily', 'covers_cron_event' );
         }
         add_action( 'covers_cron_event', [ $this, 'coversCron' ] );
     }
@@ -41,24 +41,35 @@ class Cron extends BaseController {
      * @return void
      */
     function coversCron() {
-        $batch_size = 38;
+        $batch_size = 100;
         $coversApi = new CoversApi;
-        $coversApiDbManager = new CoversApiDbManager;
         $coversApiDbLogManager = new CoversApiDbLogManager;
-        error_log('Start Cron '. date('Y-m-d') );
+        error_log('[BIBLIO - Covers Cron] Start Cron '. date('Y-m-d') );
 
         $log_id = (int) $coversApiDbLogManager->insertLogData('logged');
         do {
             $offset = (int) get_option( 'last_processed_offset', 0 );
             $response = (string) $coversApi->scanProducts($log_id, $batch_size, $offset );
             $response = (array) json_decode($response, true);
-            error_log(var_export($response, true));
+            error_log("[BIBLIO - Covers Cron] ".var_export($response, true));
             update_option( 'last_processed_offset', $offset + $batch_size );
             if( $response['hasMore'] == false ) {
                 update_option( 'last_processed_offset', 0 );
             }
         } while( $response['hasMore'] == true );
-        error_log('End Cron '. var_export($response,true) );
+        error_log('[BIBLIO - Covers Cron] End Dilve Cron '. var_export($response,true) );
+
+        do {
+            $offset = (int) get_option( 'last_processed_offset', 0 );
+            $response = (string) $coversApi->scanProducts($log_id, $batch_size, $offset, 'cegal' );
+            $response = (array) json_decode($response, true);
+            error_log("[BIBLIO - Covers Cron] ".var_export($response, true));
+            update_option( 'last_processed_offset', $offset + $batch_size );
+            if( $response['hasMore'] == false ) {
+                update_option( 'last_processed_offset', 0 );
+            }
+        } while( $response['hasMore'] == true );
+        error_log('[BIBLIO - Covers Cron] End Cegal Cron '. var_export($response,true) );
     }
 
 }

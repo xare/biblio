@@ -196,7 +196,7 @@ class GeslibApiReadFiles {
 	 */
 	public function countLinesWithGP4(string $filename, string $type='product'): array|false {
 		// Check if the file exists
-		$codes  = ['GP4', '1L','3'];
+		$codes  = ['GP4', '1L','3', 'AUT'];
 		if (!file_exists($filename)) {
 			return false; // Return false if file not found
 		}
@@ -213,6 +213,9 @@ class GeslibApiReadFiles {
 			'3A' => 0,
 			'3M' => 0,
 			'3B' => 0,
+			'AUTA' => 0,
+			'AUTM' => 0,
+			'AUTB' => 0,
 		];
 		if( !is_file( $filename )) {
 			return false;
