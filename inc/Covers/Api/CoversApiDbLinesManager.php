@@ -75,6 +75,15 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
         }
     }
 
+    /**
+     * Updates the url_origin field in the database table for a given id.
+     *
+     * @param int $id The id of the row to update.
+     * @param string $origin_url The new value for the url_origin field.
+     * @throws \Exception If the update operation fails.
+     * @return bool True if the update is successful, false otherwise.
+     */
+
     public function set_url_origin( int $id, string $origin_url ): bool {
         global $wpdb;
         $table_name = $wpdb->prefix.self::COVERS_LINES_TABLE; // Replace with your actual table name if different

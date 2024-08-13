@@ -54,26 +54,26 @@ class Dashboard extends BaseController {
         $this->subpages = [
 			[
                 'parent_slug' => 'covers', // Parent menu slug
-                'page_title' => 'Dilve Logs', // Page title
-                'menu_title' => 'Dilve Logs', // Menu title
+                'page_title' => 'Covers Logs', // Page title
+                'menu_title' => 'Covers Logs', // Menu title
                 'capability' => 'manage_options', // Capability
-                'menu_slug' => 'dilve_logs', // Menu slug
+                'menu_slug' => 'covers_logs', // Menu slug
                 'callback' => [$this->callbacks, 'adminDilveLogs'], // Callback function, define it in AdminCallbacks class
             ],
             [
                 'parent_slug' => 'covers', // Parent menu slug
-                'page_title' => 'Dilve Logger', // Page title
-                'menu_title' => 'Dilve Logger', // Menu title
+                'page_title' => 'Covers Logger', // Page title
+                'menu_title' => 'Covers Logger', // Menu title
                 'capability' => 'manage_options', // Capability
-                'menu_slug' => 'dilve_logger', // Menu slug
+                'menu_slug' => 'covers_logger', // Menu slug
                 'callback' => [$this->callbacks, 'adminDilveLogger'], // Callback function, define it in AdminCallbacks class
 			],
 			[
                 'parent_slug' => 'covers', // Parent menu slug
-                'page_title' => 'Dilve Lines', // Page title
-                'menu_title' => 'Dilve Lines', // Menu title
+                'page_title' => 'Covers Lines', // Page title
+                'menu_title' => 'Covers Lines', // Menu title
                 'capability' => 'manage_options', // Capability
-                'menu_slug' => 'dilve_lines', // Menu slug
+                'menu_slug' => 'covers_lines', // Menu slug
                 'callback' => [$this->callbacks, 'adminDilveLines'], // Callback function, define it in AdminCallbacks class
 			],
         ];

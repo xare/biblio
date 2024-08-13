@@ -18,8 +18,8 @@ class CoversApiDbLogManager extends CoversApiDbManager {
 			date('Y-m-d H:i:s'), // start_date
 			null, // end_date
 			$status, // status
-            $coversApiDbManager->countAllProducts(), //get_total_products
-            0 // scanned_products
+            count($coversApiDbManager->getProductsWithoutCover()), //get_total_products
+            0 // processed_products
 		];
 		$insertArray = array_combine(self::$coversLogKeys, $coversLogValues);
 		try {
@@ -54,7 +54,32 @@ class CoversApiDbLogManager extends CoversApiDbManager {
 			$wpdb->update( $table_name, $data, $where, $format, $where_format);
 			return true;
 		} catch( \Exception $exception ) {
-			wp_error('Unable to update the row.'.$exception->getMessage());
+			error_log('[BIBLIO - Covers Api] Unable to update the row.'.$exception->getMessage());
+			return false;
+		}
+	}
+
+	/**
+	 * Updates the number of scanned products in the database.
+	 *
+	 * @param int $log_id The ID of the log.
+	 * @param int $scanned_products The number of scanned products.
+	 * @return bool Returns true if the update is successful, false otherwise.
+	 */
+
+	public function set_processed_products(int $log_id, int $processed_items): bool {
+		global $wpdb;
+		$table_name = $wpdb->prefix.self::COVERS_LOG_TABLE;
+		$data = [ 'processed_items' => $processed_items ];
+		$where = ['id' => $log_id];
+		$format = ['%d']; // integer format
+		$where_format = ['%d']; // integer format
+		try {
+			$wpdb->update( $table_name, $data, $where, $format, $where_format);
+			error_log('[BIBLIO - Covers Api] We updated the covers_log table with '.$processed_items.' scanned products.');
+			return true;
+		} catch( \Exception $exception ) {
+			error_log('[BIBLIO - Covers Api] Unable to update the row. '.$exception->getMessage());
 			return false;
 		}
 	}

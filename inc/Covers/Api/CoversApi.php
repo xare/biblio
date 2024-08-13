@@ -380,7 +380,7 @@ class CoversApi {
 			//if ( $index > 100 ) break;
 			// Get ean number from each product;
 			error_log('[BIBLIO - Covers Scan Products]'.var_export($product, true));
-			if($product['ID'] == null ) {
+			if( $product['ID'] == null ) {
 				error_log('[BIBLIO - Covers Scan Products] PRODUCT ID IS NULL', true);
 				continue;
 			}
@@ -407,8 +407,10 @@ class CoversApi {
 						error_log('[BIBLIO - Covers Api] This product has already a cover: '.$ean);
 						continue;
 					}
+					
 					$coversApiDbLinesManager->set_url_origin($line_id, $book['cover_url']);
 					$coversApiDbLinesManager->setBook($product['post_title'], $product['ID'], $line_id);
+					
 					if ( $cover_post = $this->create_cover( $book['cover_url'], $ean.'.jpg', 'image/jpeg', FALSE, $type ) ) {
 						$coversApiDbManager->set_featured_image_for_product($cover_post->ID, $ean);
 						$coversApiDbLinesManager->set_url_target($line_id, $product['ID']);
@@ -431,7 +433,7 @@ class CoversApi {
 
 				$coversApiDbManager->set_covers_url($ean, $url);
 			}
-			$coversApiDbLogManager->setLogStatus($log_id, 'processed');
+			$coversApiDbLogManager->setLogStatus($log_id, 'processing');
 			$response[] = [ 'id' => $product['ID'] ];
 			error_log('[BIBLIO - Covers Api] Offset now: '. $offset );
 			$progress = ( $offset / $totalLines ) * 100;
@@ -443,6 +445,10 @@ class CoversApi {
 		$response['eans'] = $eans;
 		$response['message'] = "[BIBLIO - Covers Api] " . $batch_size . " books have been processed: ";
 		$response['progress'] = number_format($progress, 2)." %";
+		if($hasMore == false) {
+			$coversApiDbLogManager->setLogStatus($log_id, 'processed');
+			$coversApiDbLogManager->set_processed_products($log_id, $offset + $index);
+		}
         return json_encode( $response );
     }
 
