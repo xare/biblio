@@ -4,7 +4,6 @@ namespace Inc\Geslib\Api;
 
 use Exception;
 use Inc\Geslib\Api\GeslibApiSanitize;
-use Inc\Geslib\Api\GeslibApiDbLoggerManager;
 use WC_Product_Simple;
 use WP_Query;
 
@@ -12,7 +11,6 @@ class GeslibApiDbManager {
 	const GESLIB_LINES_TABLE = 'geslib_lines';
 	const GESLIB_LOG_TABLE = 'geslib_log';
 	const GESLIB_QUEUES_TABLE = 'geslib_queues';
-	const GESLIB_LOGGER_TABLE = 'geslib_logger';
 	static $geslibLinesKeys = [
 		'log_id', // int relation oneToMany with geslib_log
 		'geslib_id', // int
@@ -28,14 +26,6 @@ class GeslibApiDbManager {
 		'end_date', // date
 		'status', // string waiting | enqueued | processed
 		'lines_count', // int number of lines
-	];
-	static $geslibLoggerKeys = [
-		'log_id', // int
-		'geslib_id', // int
-		'type', // string store_lines | store_products | build_content
-		'action', // string
-		'entity', // string log | lines |
-		'metadata', // json
 	];
 
 	/**

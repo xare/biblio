@@ -3,8 +3,7 @@
 namespace Inc\Geslib\Api;
 
 use Inc\Geslib\Api\GeslibApiDbLinesManager;
-use Inc\Geslib\Api\GeslibApiWpManager;
-use Inc\Geslib\Api\GeslibApiDbLoggerManager;
+use Inc\Geslib\Api\GeslibApiDbManager;
 use WP_CLI;
 
 class GeslibApiLines {
@@ -192,7 +191,6 @@ class GeslibApiLines {
 	public function storeToLines(int $log_id): int{
 		$geslibApiDbLogManager = new GeslibApiDbLogManager;
 		$geslibApiDbQueueManager = new GeslibApiDbQueueManager;
-		$geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
 		// 1. Read the log table
 		$filename = $geslibApiDbLogManager->getGeslibLoggedFilename( $log_id );
 		$fullPath = $this->mainFolderPath . $filename;
@@ -436,7 +434,6 @@ class GeslibApiLines {
 	 */
 	private function processAUT( $data, $log_id ) {
 		$geslibApiDbLinesManager = new GeslibApiDbLinesManager;
-		$geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
 		if (in_array( $data[1], ['A','M'] )){
 			// Insert or Update
 			$content_array = array_combine( self::$authorKeys, $data );

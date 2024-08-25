@@ -11,9 +11,8 @@ use Inc\Geslib\Base\BaseController;
 class Enqueue extends BaseController {
   public function register(){
     $page = filter_input(INPUT_GET, 'page', FILTER_DEFAULT);
-    if (is_admin() && ($page === 'geslib' || $page === 'geslib_logger') )
+    if (is_admin() && $page === 'geslib' )
       add_action ( 'admin_enqueue_scripts', [$this, 'enqueue_admin']);
-    //add_action ( 'enqueue_scripts', [$this, 'enqueue']);
   }
 function enqueue() {
         //enqueue all our scripts

@@ -7,9 +7,8 @@ namespace Inc\Covers\Base;
 
 use Inc\Covers\Api\CoversApi;
 use Inc\Covers\Api\CoversApiDbManager;
-use Inc\Covers\Api\CoverslApiDbManager;
 use Inc\Covers\Api\CoversApiDbLogManager;
-use Inc\Covers\Api\CoverslApiDbLogManager;
+
 
 class Cron extends BaseController {
     public function register() {

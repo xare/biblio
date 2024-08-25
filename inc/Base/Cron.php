@@ -6,7 +6,6 @@
 namespace Inc\Biblio\Base;
 
 use Inc\Geslib\Api\GeslibApiDbLinesManager;
-use Inc\Geslib\Api\GeslibApiDbLoggerManager;
 use Inc\Geslib\Api\GeslibApiDbLogManager;
 use Inc\Geslib\Api\GeslibApiDbManager;
 use Inc\Geslib\Api\GeslibApiDbProductsManager;
@@ -36,7 +35,6 @@ class Cron extends BaseController {
         $geslibApiDbLogManager = new GeslibApiDbLogManager;
         $geslibApiDbLinesManager = new GeslibApiDbLinesManager;
         $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
-        $geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
         $geslibApiReadFiles->readFolder();
         // Purge queues
         // Former calls to the cron may have stopped for some reason, before opening the next file.

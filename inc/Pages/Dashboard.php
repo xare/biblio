@@ -70,14 +70,6 @@ class Dashboard extends BaseController {
                 'menu_slug' => 'geslib_log', // Menu slug
                 'callback' => [$this->callbacks, 'adminLogTable'] // Callback function, define it in AdminCallbacks class
 			],
-            [
-                'parent_slug' => 'biblio', // Parent menu slug
-                'page_title' => 'Geslib Logger', // Page title
-                'menu_title' => 'Geslib Logger', // Menu title
-                'capability' => 'manage_options', // Capability
-                'menu_slug' => 'geslib_logger', // Menu slug
-                'callback' => [$this->callbacks, 'adminGeslibLogger'] // Callback function, define it in AdminCallbacks class
-			],
 			[
                 'parent_slug' => 'biblio', // Parent menu slug
                 'page_title' => 'Geslib Queues', // Page title

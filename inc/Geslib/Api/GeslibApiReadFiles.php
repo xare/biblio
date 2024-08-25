@@ -3,7 +3,6 @@
 namespace Inc\Geslib\Api;
 
 use Inc\Geslib\Api\GeslibApiDbManager;
-use Inc\Geslib\Api\GeslibApiDbLoggerManager;
 use ZipArchive;
 
 // This file contains all the functions necessary to read the contents in the geslib folder and store them to the logs table

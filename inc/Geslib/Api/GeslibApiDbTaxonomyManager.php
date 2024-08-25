@@ -2,6 +2,8 @@
 
 namespace Inc\Geslib\Api;
 
+use Exception;
+
 class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 
     public function storeEditorials( int $geslib_id, $editorial ) {
@@ -81,7 +83,6 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
     }
 
 	public function storeAuthors( int $geslib_id, $author ) {
-		$geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
 		$term_name = $author->content;
 		$geslibApiSanitize = new GeslibApiSanitize;
 		$term_name = $geslibApiSanitize->utf8_encode($term_name);
@@ -165,7 +166,6 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 			error_log( var_export( $editorial,true ) );
 			return false;
 		}
-		$geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
         $geslibApiSanitize = new GeslibApiSanitize();
 		$term_name = $geslibApiSanitize->utf8_encode($editorial->name);
 		$term_slug = $this->_create_slug( $term_name );
@@ -208,9 +208,7 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
      */
     public function storeAuthor( int $geslib_id, string $content): mixed {
 		$author = json_decode( $content );
-		error_log(var_export($author, true));
 		if ( $author === null ) return false;
-		$geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
 		$geslibApiSanitize = new GeslibApiSanitize;
 		$term_name = $geslibApiSanitize->utf8_encode($author->name);
 		if ( $term_name === null ) return false;
@@ -250,13 +248,6 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
         if ( is_wp_error($term_data) ) {
             // Handle the error here
             error_log( $term_data->get_error_message());
-			$geslibApiDbLoggerManager->geslibLogger( 0, $author->geslib_id, 'error', 'store authors', 'author', [
-				'message' => 'Function storeAuthors: ' . $term_data->get_error_message() ,
-				'file' => basename(__FILE__),
-				'class' => __CLASS__,
-				'function' => __METHOD__,
-				'line' => __LINE__,
-			]);
 			return false;
         }
 		return get_term($term_data['term_id'], 'autors');
@@ -271,9 +262,7 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
      */
     public function storeColeccion( int $geslib_id, string $content): mixed {
 		$coleccion = json_decode( $content );
-		error_log(var_export($coleccion, true));
 		if ( $coleccion === null ) return false;
-		$geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
 		$geslibApiSanitize = new GeslibApiSanitize;
 		$term_name = $geslibApiSanitize->utf8_encode($coleccion->name);
 		if ( $term_name === null ) return false;
@@ -326,6 +315,16 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 	}
 
 
+    /**
+     * Stores a product category in the WordPress database.
+     *
+     * Checks if the category already exists, and if not, creates a new one.
+     * Also adds a term meta to store the Geslib ID of the category.
+     *
+     * @param object $product_category The product category object to store.
+     * @throws Exception If an error occurs during the category creation process.
+     * @return mixed The created category term object, or false on failure.
+     */
     public function storeProductCategory($product_category): mixed {
         $geslibApiSanitize = new GeslibApiSanitize;
 		// Make sure the category doesn't already exist
@@ -359,6 +358,15 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 		}
 	}
 
+	/**
+	 * Reorganizes product categories by updating the parent category of each term.
+	 *
+	 * This function iterates over all product categories, extracts the parent category's geslib_id,
+	 * finds the parent term based on the geslib_id, and updates the term's parent with the parent term.
+	 *
+	 * @throws Exception If an error occurs during the term update process.
+	 * @return void
+	 */
 	public function reorganizeProductCategories() {
 		$terms = get_terms([
 			'taxonomy' => 'product_cat',

@@ -1,7 +1,6 @@
 <?php
 
 namespace Inc\Geslib\Api;
-use Inc\Geslib\Api\GeslibApiDbLoggerManager;
 
 class GeslibApiDbLogManager extends GeslibApiDbManager {
 

@@ -1,7 +1,6 @@
 <?php
 
 namespace Inc\Geslib\Api;
-use Inc\Geslib\Api\GeslibApiDbLoggerManager;
 
 class GeslibApiStoreData {
     private $db;
@@ -82,7 +81,6 @@ class GeslibApiStoreData {
         $geslibApiDbLinesManager = new GeslibApiDbLinesManager;
         $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
         $geslibApiDbManager = new GeslibApiDbManager;
-        $geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
         $authors = $geslibApiDbLinesManager->getAuthorsFromGeslibLines();
         $batch_size = 3000; // Choose a reasonable batch size
 		$batch = [];

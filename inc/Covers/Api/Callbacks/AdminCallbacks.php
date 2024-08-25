@@ -20,9 +20,6 @@
         return require_once("{$this->plugin_templates_path}/adminDilveLines.php");
     }
 
-    public function adminDilveLogger() {
-        return require_once("{$this->plugin_templates_path}/adminDilveLogger.php");
-    }
 
     public function textSanitize( $input ) {
         $output = get_option('covers_settings');

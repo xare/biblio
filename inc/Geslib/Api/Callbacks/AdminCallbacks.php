@@ -11,9 +11,7 @@
         public function adminDashboard() {
             return require_once("{$this->plugin_templates_path}/adminGeslibDashboard.php");
         }
-        public function adminGeslibLogger() {
-            return require_once("{$this->plugin_templates_path}/adminGeslibLogger.php");
-        }
+
         public function adminLogTable() {
             return require_once("{$this->plugin_templates_path}/adminGeslibLogs.php");
         }

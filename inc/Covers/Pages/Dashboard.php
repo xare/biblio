@@ -60,14 +60,6 @@ class Dashboard extends BaseController {
                 'menu_slug' => 'covers_logs', // Menu slug
                 'callback' => [$this->callbacks, 'adminDilveLogs'], // Callback function, define it in AdminCallbacks class
             ],
-            [
-                'parent_slug' => 'covers', // Parent menu slug
-                'page_title' => 'Covers Logger', // Page title
-                'menu_title' => 'Covers Logger', // Menu title
-                'capability' => 'manage_options', // Capability
-                'menu_slug' => 'covers_logger', // Menu slug
-                'callback' => [$this->callbacks, 'adminDilveLogger'], // Callback function, define it in AdminCallbacks class
-			],
 			[
                 'parent_slug' => 'covers', // Parent menu slug
                 'page_title' => 'Covers Lines', // Page title

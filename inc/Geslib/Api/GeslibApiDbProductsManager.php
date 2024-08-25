@@ -4,14 +4,8 @@ namespace Inc\Geslib\Api;
 
 use WP_Query;
 use WC_Product_Simple;
-use Inc\Geslib\Api\GeslibApiDbLoggerManager;
 
 class GeslibApiDbProductsManager extends GeslibApiDbManager {
-	protected $geslibApiDbLoggerManager;
-
-	public function __construct(){
-		$this->geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
-	}
 
     /**
      * storeProducts
@@ -285,13 +279,6 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 						$product->save();
 				   } catch( \Exception $exception ) {
 						error_log('Product stock for geslib_id '.$geslib_id.' has NOT been updated:'. $exception->getMessage());
-						$this->geslibApiDbLoggerManager->geslibLogger(0, $geslib_id, 'error', 'stock_product', 'woocommerce_product', [
-							'message' => 'Product stock for geslib_id '.$geslib_id.' has NOT been updated:'. $exception->getMessage(),
-							'file' => basename(__FILE__),
-							'class' => __CLASS__,
-							'function' => __METHOD__,
-							'line' => __LINE__,
-						]);
 				   }
                }
            }

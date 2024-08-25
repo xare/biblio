@@ -1,7 +1,6 @@
 <?php
 
 namespace Inc\Geslib\Api;
-use Inc\Geslib\Api\GeslibApiDbLoggerManager;
 
 class GeslibApiDbQueueManager extends GeslibApiDbManager {
 
@@ -15,7 +14,6 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
      */
     public function insertLinesIntoQueue( array $batch ): void {
 		global $wpdb;
-		$geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
 		foreach ($batch as $item) {
 			try {
 				$wpdb->insert($wpdb->prefix . self::GESLIB_QUEUES_TABLE, $item);
@@ -325,7 +323,6 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 	 */
 	public function processBatchStoreProducts( int $batchSize = 100 ) {
 		$geslibApiDbProductsManager = new GeslibApiDbProductsManager();
-		$geslibApiDbLoggerManager = new GeslibApiDbLoggerManager();
 		$queue = $this->getBatchFromQueue( (int) $batchSize, 'store_products' );
 		foreach ( $queue as $task ) {
 			if( $task->action == 'stock') {
@@ -339,10 +336,15 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 		}
 	}
 
+	/**
+	 * Processes a batch of tasks to store authors.
+	 *
+	 * @param int $batchSize The number of tasks to process in a batch. Default is 100.
+	 * @return void
+	 */
 	public function processBatchStoreAutors( int $batchSize = 100 ) {
 		$geslibApiDbManager = new GeslibApiDbManager();
 		$geslibApiDbTaxonomyManager = new GeslibApiDbTaxonomyManager();
-		$geslibApiDbLoggerManager = new GeslibApiDbLoggerManager();
 		$queue = $this->getBatchFromQueue( (int) $batchSize, 'store_autors' );
 		foreach ( $queue as $task ) {
 			if( $task->action == 'B') {
@@ -353,6 +355,13 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 			$this->deleteItemFromQueue( (string) $task->type, (int) $task->log_id, (int) $task->geslib_id );
 		}
 	}
+
+	/**
+	 * Processes a batch of tasks to store editorials.
+	 *
+	 * @param int $batchSize The number of tasks to process in a batch. Default is 100.
+	 * @return void
+	 */
 	public function processBatchStoreEditorials( int $batchSize = 100 ) {
 		$geslibApiDbManager = new GeslibApiDbManager();
 		$geslibApiDbTaxonomyManager = new GeslibApiDbTaxonomyManager();
@@ -366,6 +375,13 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 			$this->deleteItemFromQueue( (string) $task->type, (int) $task->log_id, (int) $task->geslib_id );
 		}
 	}
+
+	/**
+	 * Processes a batch of tasks to store categories.
+	 *
+	 * @param int $batchSize The number of tasks to process in a batch. Default is 100.
+	 * @return void
+	 */
 	public function processBatchStoreCategories( int $batchSize = 100 ) {
 		$geslibApiDbManager = new GeslibApiDbManager();
 		$geslibApiDbTaxonomyManager = new GeslibApiDbTaxonomyManager();
@@ -380,6 +396,12 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 		}
 	}
 
+	/**
+	 * Processes a batch of tasks to store colecciones.
+	 *
+	 * @param int $batchSize The number of tasks to process in a batch. Default is 100.
+	 * @return void
+	 */
 	public function processBatchStoreColecciones( int $batchSize = 100 ) {
 		$geslibApiDbManager = new GeslibApiDbManager();
 		$geslibApiDbTaxonomyManager = new GeslibApiDbTaxonomyManager();

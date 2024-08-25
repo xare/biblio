@@ -3,15 +3,9 @@
 namespace Inc\Geslib\Api;
 
 use Inc\Geslib\Api\GeslibApiDbManager;
-use Inc\Geslib\Api\GeslibApiDbLoggerManager;
 
 class GeslibApiDbLinesManager extends GeslibApiDbManager {
 
-	protected $geslibApiDbLoggerManager;
-
-	public function __construct(){
-		$this->geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
-	}
     /**
 	 * countGeslibLines
 	 *

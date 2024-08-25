@@ -7,7 +7,6 @@ namespace Inc\Geslib\Base;
 
 use Inc\Dilve\Api\DilveApi;
 use Inc\Geslib\Api\GeslibApiDbLinesManager;
-use Inc\Geslib\Api\GeslibApiDbLoggerManager;
 use Inc\Geslib\Api\GeslibApiDbLogManager;
 use Inc\Geslib\Api\GeslibApiDbManager;
 use Inc\Geslib\Api\GeslibApiDbProductsManager;
@@ -38,7 +37,6 @@ class Cron extends BaseController {
         $geslibApiDbLinesManager = new GeslibApiDbLinesManager;
         $geslibApiDbProductsManager = new GeslibApiDbProductsManager;
         $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
-        $geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
         $geslibApiStoreData = new GeslibApiStoreData;
         $geslibApiReadFiles->readFolder();
         // Purge queues

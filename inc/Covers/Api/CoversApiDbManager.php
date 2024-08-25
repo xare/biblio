@@ -9,7 +9,6 @@ use WP_Query;
 class CoversApiDbManager {
     const COVERS_LOG_TABLE = 'covers_log';
     const COVERS_LINES_TABLE = 'covers_lines';
-    const COVERS_LOGGER_TABLE = 'covers_logger';
 
     static $coversLogKeys = [
 		'start_date', // date
@@ -31,12 +30,7 @@ class CoversApiDbManager {
         'attempts', // int
         'type', // int
     ];
-    public $coversLoggerKeys = [
-        'date',
-        'ean', // int
-		'url', // int
-		'metadata', // json
-    ];
+    
 
 
     public function getProductsWithoutCover(): array {
