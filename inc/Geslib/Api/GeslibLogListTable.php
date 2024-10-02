@@ -135,7 +135,8 @@ class GeslibLogListTable extends WP_List_Table {
 
     public function column_filename($item) {
         $action = [
-            'update' => sprintf('<a href="?page=%s&action=%s&log_id=%s" class="update-status">Update Status</a>', $_GET['page'], 'update-status', $item['id']),
+            'set2logged' => sprintf('<a href="?page=%s&action=%s&log_id=%s" class="update-status">Set to logged</a>', $_GET['page'], 'update-status', $item['id']),
+            'set2processed' => sprintf('<a href="?page=%s&action=%s&log_id=%s" class="set-to-processed">Set to processed</a>', $_GET['page'], 'set-to-processed', $item['id']),
         ];
         return sprintf('%1$s %2$s', $item['filename'], $this->row_actions($action));
     }
@@ -168,9 +169,24 @@ class GeslibLogListTable extends WP_List_Table {
 
     public function update_log(int $log_id){
         global $wpdb;
-        $wpdb->update($wpdb->prefix."geslib_log",
+        try {
+            $wpdb->update($wpdb->prefix."geslib_log",
                         [ 'status' => 'logged' ],
                         [ 'id' => $log_id ]);
+        } catch (\Exception $exception) {
+            error_log("[BIBLIO - Geslib Log Update to logged: ".$exception->getMessage());
+        }
+    }
+
+    public function set_to_processed(int $log_id){
+        global $wpdb;
+        try {
+            $wpdb->update($wpdb->prefix."geslib_log",
+                        [ 'status' => 'processed' ],
+                        [ 'id' => $log_id ]);
+        } catch (\Exception $exception) {
+            error_log("[BIBLIO - Geslib Log Update to processed: ".$exception->getMessage());
+        }
     }
 
     public function process_bulk_action() {
@@ -191,8 +207,18 @@ class GeslibLogListTable extends WP_List_Table {
                 //foreach ($log_ids as $log_id) {
                 $this->update_log($log_id);
                 //}
-            wp_redirect( esc_url( add_query_arg() ) );
-            exit;
+                wp_redirect( esc_url( add_query_arg() ) );
+                exit;
+            }
+            if ( ( isset( $_REQUEST['action'] ) && $_REQUEST['action'] == 'set-to-processed' )
+            || ( isset( $_REQUEST['action2'] ) && $_REQUEST['action2'] == 'set-to-processed' )
+            ) {
+                $log_id = $_REQUEST['log_id'];
+                //foreach ($log_ids as $log_id) {
+                $this->set_to_processed($log_id);
+                //}
+                wp_redirect( esc_url( add_query_arg() ) );
+                exit;
             }
         //}
     }

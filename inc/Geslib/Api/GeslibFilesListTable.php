@@ -19,6 +19,7 @@ class GeslibFilesListTable extends WP_List_Table {
         // Calculate the total number of pages
 
         $this->items = $this->wp_list_table_data($per_page)['items'];
+
         $total_items = $this->wp_list_table_data($per_page)['total'];
         $total_pages = ceil($total_items / $per_page);
         $this->set_pagination_args([
@@ -68,8 +69,10 @@ class GeslibFilesListTable extends WP_List_Table {
                 'AUTb' => $lineCounts['AUTB'],
             ];
         }
+
         // Determine what page the user is currently looking at
         $offset = ($this->get_pagenum() - 1) * $per_page;
+
         return [
             'items' => array_slice($data, $offset, $per_page),
             'total' => count($data),
@@ -138,7 +141,7 @@ class GeslibFilesListTable extends WP_List_Table {
             '3m' => $item[$column_name],
             '3b' => $item[$column_name],
             'AUTa' => $item[$column_name],
-            'AUtm' => $item[$column_name],
+            'AUTm' => $item[$column_name],
             'AUTb' => $item[$column_name],
             default => 'no value',
         };

@@ -236,7 +236,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 								WHERE status = %s", $status);
 			return (int) $wpdb->get_var( $query );
 		} catch(\Exception $exception) {
-			error_log($exception->getMessage());
+			error_log("[Biblio - Geslib DB Log Manager] ".$exception->getMessage());
 			return false;
 		}
 	}
@@ -256,7 +256,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 			return (int) $wpdb->get_var( "SELECT COUNT(id)
 								FROM {$table_name}");
 		} catch(\Exception $exception) {
-			error_log($exception->getMessage());
+			error_log("[Biblio - Geslib DB Log Manager] ".$exception->getMessage());
 		}
 
 	}
@@ -275,7 +275,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 			return (array) $wpdb->get_results( "SELECT filename, status
 											FROM {$table_name}");
 		} catch (\Exception $exception) {
-			error_log($exception->getMessage());
+			error_log("[Biblio - Geslib DB Log Manager] ".$exception->getMessage());
 			return false;
 		}
 
@@ -302,13 +302,13 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 				if ( ! empty( $wpdb->queries ) ) {
 					foreach ( $wpdb->queries as $query ) {
 						// Log each query to the debug log
-						error_log( $query[0] );
+						error_log( "[Biblio - Geslib DB Log Manager] ".$query[0] );
 					}
 				}
 			}
 			return true;
 		} catch( \Exception $exception ) {
-			error_log( 'Unable to truncate geslib_lines table' . $exception->getMessage() );
+			error_log( '[Biblio - Geslib DB Log Manager] Unable to truncate geslib_lines table' . $exception->getMessage() );
 			return false;
 		}
 	}
@@ -330,18 +330,17 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 	public function setLogStatus( int $log_id, string $status ): bool {
 		global $wpdb;
 		$table_name = $wpdb->prefix.self::GESLIB_LOG_TABLE; // Replace with your actual table name if different
-		$data = [ 'status' => $status ];
-		if( $status == 'processed' ) {
-			$data[ 'end_date' ] = date('Y-m-d H:i:s');
-		}
+		$data = [];
+		$data['status'] = $status ;
+		$data['end_date'] = ( $status == 'processed' ) ? date('Y-m-d H:i:s', time()): null;
 		$where = ['id' => $log_id];
-		$format = ['%s']; // string format
+		$format = ['%s', '%s']; // string format
 		$where_format = ['%d']; // integer format
 		try {
 			$wpdb->update( $table_name, $data, $where, $format, $where_format);
 			return true;
 		} catch( \Exception $exception ) {
-			error_log('Unable to update the row.'.$exception->getMessage());
+			error_log('[Biblio - Geslib DB Log Manager] Unable to update the row.'.$exception->getMessage());
 			return false;
 		}
 	}
@@ -360,7 +359,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 										WHERE status = %s",'queued' );
 			return (int) $wpdb->get_var($query);
 		} catch ( \Exception $exception) {
-			error_log('ERROR on getQueuedLogId: '. $exception->getMessage());
+			error_log('[Biblio - Geslib DB Log Manager] ERROR on getQueuedLogId: '. $exception->getMessage());
 			return false;
 		}
 
@@ -391,7 +390,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
         try {
 			return !is_null( $wpdb->get_var( $query ) );
 		} catch( \Exception $exception ) {
-			error_log('ERROR on isQueued: '. $exception->getMessage());
+			error_log('[Biblio - Geslib DB Log Manager] ERROR on isQueued: '. $exception->getMessage());
 			return false;
 		}
     }

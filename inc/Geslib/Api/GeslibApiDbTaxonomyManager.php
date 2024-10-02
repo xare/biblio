@@ -35,17 +35,19 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
         // Check for errors
         if ( is_wp_error($term_data) ) {
             // Handle the error here
-           error_log($term_data->get_error_message());
+           error_log("[BIBLIO Geslib Taxonomy Manager reorganizeProductCategories] ". $term_data->get_error_message());
 		   return false;
         }
 		return get_term($term_data['term_id'], 'editorials');
     }
 
 	public function storeColecciones( int $geslib_id, $coleccion ) {
+		error_log("[BIBLIO Geslib Taxonomy Manager storeColecciones] ");
 		error_log( var_export( $coleccion,true ) );
 		$coleccion = json_decode($coleccion);
 		$term_name = $coleccion->name;
 		if ( $coleccion->content === null ){
+			error_log("[BIBLIO Geslib Taxonomy Manager storeColecciones] ");
 			error_log( var_export( $coleccion,true ) );
 			return false;
 		}
@@ -76,6 +78,7 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
         // Check for errors
         if ( is_wp_error($term_data) ) {
             // Handle the error here
+			error_log("[BIBLIO Geslib Taxonomy Manager storeColecciones] ");
             error_log($term_data->get_error_message());
 			return false;
         }
@@ -112,6 +115,7 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
         // Check for errors
         if ( is_wp_error($term_data) ) {
             // Handle the error here
+			error_log("[BIBLIO Geslib Taxonomy Manager storeAutors] ");
             error_log($term_data->get_error_message());
 			return false;
         }
@@ -149,14 +153,14 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 			// Check for errors
 			if (is_wp_error($result)) {
 				// Handle error here
-				error_log('Category did not get created for term slug'.$term_slug.' '.$result->get_error_message());
+				error_log('[BIBLIO Geslib Taxonomy Manager storeCategory] Category did not get created for term slug'.$term_slug.' '.$result->get_error_message());
 				return false;
 			}
 
 			// Return the created category
 			return get_term($result['term_id'], 'product_cat');
 		} else {
-			error_log("Category already exists");
+			error_log("[BIBLIO Geslib Taxonomy Manager storeCategory] Category with $geslib_id geslib_id number already exists");
 			return false;
 		}
 	}
@@ -178,6 +182,7 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 				'slug' => $term_slug,
 				'description' => $term_description,
 			]);
+			error_log("[BIBLIO Geslib Taxonomy Manager storeEditorial]");
 			error_log(var_export($term_data, true));
 			if( is_wp_error($term_data) ) return false;
 			update_term_meta($term_data['term_id'], 'editorial_geslib_id', $geslib_id);
@@ -224,13 +229,13 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 					'description' => $term_description,
 				]);
 				if (is_wp_error($term_data)) {
-					error_log($term_data->get_error_message());
+					error_log("[BIBLIO Geslib taxonomy manager store Author] Author did not get created for term slug ".$term_slug." ". $term_data->get_error_message());
 					return false;
 				}
 				$term_meta = update_term_meta($term_data['term_id'], 'author_geslib_id', $geslib_id);
                 return true;
 			} catch (\Exception $exception) {
-				error_log($exception->getMessage());
+				error_log("[BIBLIO Geslib taxonomy manager store Author] ". $exception->getMessage());
 				return false;
 			}
     	} else {
@@ -247,14 +252,14 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
         // Check for errors
         if ( is_wp_error($term_data) ) {
             // Handle the error here
-            error_log( $term_data->get_error_message());
+            error_log( "[BIBLIO Geslib taxonomy manager store Author] ".$term_data->get_error_message());
 			return false;
         }
 		return get_term($term_data['term_id'], 'autors');
 	}
 
 	/**
-     * storeAuthor
+     * storeColeccion
      *
      * @param  int $geslib_id
      * @param  string $content
@@ -278,13 +283,13 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 					'description' => $term_description,
 				]);
 				if (is_wp_error($term_data)) {
-					error_log($term_data->get_error_message());
+					error_log("[BIBLIO Geslib taxonomy manager store Coleccion] ".$term_data->get_error_message());
 					return false;
 				}
 				$term_meta = update_term_meta($term_data['term_id'], 'author_geslib_id', $geslib_id);
                 return true;
 			} catch (\Exception $exception) {
-				error_log($exception->getMessage());
+				error_log("[BIBLIO Geslib taxonomy manager store Coleccion] ".$exception->getMessage());
 				return false;
 			}
     	} else {
@@ -299,13 +304,13 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 								]);
 				if ( is_wp_error($term_data) ) {
 					// Handle the error here
-					error_log( $term_data->get_error_message());
+					error_log( "[BIBLIO Geslib taxonomy manager store Coleccion] ".$term_data->get_error_message());
 					return false;
 				}
 				add_term_meta($term_data['term_id'],'coleccion_geslib_id', $geslib_id);
 				return true;
 			} catch(Exception $exception) {
-				error_log($exception->getMessage());
+				error_log( "[BIBLIO Geslib taxonomy manager store Coleccion] ".$exception->getMessage());
 				return false;
 			}
     	}
@@ -346,14 +351,14 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 			// Check for errors
 			if (is_wp_error($result)) {
 				// Handle error here
-				echo $result->get_error_message();
+				error_log("[BIBLIO Geslib taxonomy manager store Product Category] ". $result->get_error_message());
 				return false;
 			}
 
 			// Return the created category
 			return get_term($result['term_id'], 'product_cat');
 		} else {
-			error_log("Category already exists");
+			error_log("[BIBLIO - Geslib Taxonomy Manager storeProductCategory] Category already exists");
 			return false;
 		}
 	}
@@ -403,7 +408,7 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 						}
 					}
 				} else {
-					error_log('No terms were found or there was an error');
+					error_log('[BIBLIO - Geslib Taxonomy Manager reorganizeProductCategories] No terms were found or there was an error');
 					continue;
 				}
 			}
@@ -411,6 +416,7 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 	}
 
 	public function removeUncategorizedCategory() {
+		$geslibApi = new GeslibApi();
 		// Get all products
 		$args = array(
 			'post_type' => 'product',
@@ -419,8 +425,25 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 		);
 
 		// Loop for each product
-		// For each product get all the categories.
-		// If category === 'uncategorized' remove it.
-
+		$products = get_posts($args);
+		$geslibApi->biblio_debug_log('INFO : GeslibApi removeUncategorizedCategory', "We are going to remove Uncategorized category from products. TOTAL: ".count($products));
+		foreach ($products as $product) {
+			// Get all product categories
+			$categories = get_the_terms($product, 'product_cat');			
+			// Remove uncategorized category
+			// For each product get all the categories.
+			if(count($categories) == 1 ) continue; 
+			foreach ($categories as $category) {
+				// If category === 'uncategorized' remove it.
+				if ($category->name === 'Uncategorized') {
+					try {
+						wp_remove_object_terms($product, $category->term_id, 'product_cat');
+						$geslibApi->biblio_debug_log('INFO : GeslibApi removeUncategorizedCategory', "We removed Uncategorized category from product $product");
+					} catch (Exception $e) {
+						$geslibApi->biblio_debug_log('ERROR : GeslibApi removeUncategorizedCategory', "We could not remove Uncategorized category from product $product");
+					}
+				}
+			}
+		}	
 	}
 }

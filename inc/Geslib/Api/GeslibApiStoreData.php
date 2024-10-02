@@ -35,7 +35,7 @@ class GeslibApiStoreData {
         }
         // Return a status message indicating success or failure and/or count of categories added.
         $totalAdded = count($product_categories);
-        error_log("Added $totalAdded product categories to the queue.");
+        error_log("[BIBLIO - Geslib Store Data storeProductCategories] Added $totalAdded product categories to the queue.");
     }
 
 

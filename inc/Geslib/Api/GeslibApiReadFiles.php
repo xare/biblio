@@ -11,7 +11,6 @@ class GeslibApiReadFiles {
 	private string $mainFolderPath;
     private string $histoFolderPath;
 	private array $geslibSettings;
-    private $db;
 
 	/**
      * __construct
@@ -26,7 +25,6 @@ class GeslibApiReadFiles {
 		$this->geslibSettings = get_option('geslib_settings');
         $this->mainFolderPath = (string) WP_CONTENT_DIR . '/uploads/' . $this->geslibSettings['geslib_folder_index'].'/';
         $this->histoFolderPath = (string) $this->mainFolderPath . 'HISTO/';
-        $this->db = new GeslibApiDbManager();
     }
 
 	/**
@@ -117,7 +115,7 @@ class GeslibApiReadFiles {
 				return (string) $extractedFilename;
 			} else {
 				// Handle error
-				error_log('Could not open the ZIP file.');
+				error_log('[BIBLIO - Geslib GeslibReadFiles::unzipFile] Could not open the ZIP file.');
 			}
 		}
 		return false;
@@ -226,11 +224,9 @@ class GeslibApiReadFiles {
 			$lineArray = explode('|', $line);
 			if ( in_array($lineArray[0], $codes)) {
 				$countsArray['total']++; // Increment total GP4 lines count
-				if ( count( $lineArray ) > 1 ) {
-					if (in_array($lineArray[1], ['A', 'M', 'B'])) {
-						// i.e.: $countArray['GP4A']
-						$countsArray[$lineArray[0] . $lineArray[1]]++;
-					}
+				if (count( $lineArray ) > 1 && in_array($lineArray[1], ['A', 'M', 'B'])) {
+					// i.e.: $countArray['GP4A']
+					$countsArray[$lineArray[0] . $lineArray[1]]++;
 				}
 			}
 		}

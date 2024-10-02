@@ -11,7 +11,7 @@ namespace Inc\Geslib\Base;
     global $wpdb;
     flush_rewrite_rules();
 
-    $default = [];
+    $default = ['geslib_folder_index' => 'geslib'];
 
     if ( !get_option('geslib_settings')) {
       update_option('geslib_settings', $default);
@@ -23,7 +23,7 @@ namespace Inc\Geslib\Base;
     $log_table_name = $wpdb->prefix . 'geslib_log';
     $queue_table_name = $wpdb->prefix. 'geslib_queues';
 
-    $log_sql = "CREATE TABLE $log_table_name (
+    $log_sql = "CREATE TABLE IF NOT EXISTS $log_table_name (
       id mediumint(9) unsigned NOT NULL AUTO_INCREMENT,
       filename text NOT NULL,
       start_date datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
@@ -33,7 +33,7 @@ namespace Inc\Geslib\Base;
       PRIMARY KEY (id)
     ) $charset_collate;";
 
-    $queue_sql = "CREATE TABLE $queue_table_name (
+    $queue_sql = "CREATE TABLE IF NOT EXISTS $queue_table_name (
         id int(11) unsigned NOT NULL AUTO_INCREMENT,
         log_id mediumint(9) unsigned,
         geslib_id text,

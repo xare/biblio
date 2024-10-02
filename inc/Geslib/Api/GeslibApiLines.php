@@ -144,7 +144,7 @@ class GeslibApiLines {
 		//"9", // Palabras vacías
 		"B", // Stock
 		//"B2", // Stock por centros
-		"E", // Estados de artículos
+		//"E", // Estados de artículos
 		//"CLI", // Clientes
 		"AUT", // Autores
 		//"AUTBIO", // Biografías de Autores
@@ -189,8 +189,10 @@ class GeslibApiLines {
 	 * @return int
 	 */
 	public function storeToLines(int $log_id): int{
+		$geslibApi = new GeslibApi();
 		$geslibApiDbLogManager = new GeslibApiDbLogManager;
 		$geslibApiDbQueueManager = new GeslibApiDbQueueManager;
+		$geslibApiDbProductsManager = new GeslibApiDbProductsManager;
 		// 1. Read the log table
 		$filename = $geslibApiDbLogManager->getGeslibLoggedFilename( $log_id );
 		$fullPath = $this->mainFolderPath . $filename;
@@ -203,19 +205,23 @@ class GeslibApiLines {
 
 		$lines = file( $fullPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES );
 
-		$batch_size = 3000; // Choose a reasonable batch size
+		$batch_size = 300; // Choose a reasonable batch size
 		$batch = [];
-		$index = 0;
 		$i = 0;
+		$geslibApi->biblio_debug_log('Geslib GeslibApiLines::storeToLines count lines', count( $lines ) );
 		foreach ($lines as $line) {
 			$line = $this->sanitizeLine( $line );
 			$line_array = explode('|', $line);
 
-			if( $this->isUnnecessaryLine( $line ) ) continue;
-			if( !$this->isInProductKey( $line ) ) continue;
-			if( $this->isInEditorials( $line ) ) continue;
-			if( $this->isInAutors( $line ) ) continue;
-
+			if ( $this->isUnnecessaryLine( $line ) 
+			|| !in_array( $line_array[0], self::$lineTypes) 
+			|| $this->isInEditorials( $line ) 
+			|| $this->isInAutors( $line ) 
+			|| ($line_array[0] == 'B' 
+				&& !$geslibApiDbProductsManager->check_product_stock_by_geslib_id($line_array[1], $line_array[2]))) {
+				continue;
+			}
+			$geslibApi->biblio_debug_log('Geslib GeslibApiLines::storeToLines Loop INDEX:', $i );
 			$index = ( in_array( $line_array[0],['6E', '6TE', 'AUTBIO', 'B','LA'] ) ) ? 1 : 2;
 			$entity = match ( $line_array[0] ) {
 				'1L' => 'editorials',
@@ -242,16 +248,20 @@ class GeslibApiLines {
 				'entity' => $entity,
 				'action' => $action,
 			];
+			$geslibApi->biblio_debug_log('Geslib GeslibApiLines::storeToLines', var_export( $item, true ) );
 			$batch[] = $item;
+			$geslibApi->biblio_debug_log('Geslib GeslibApiLines::storeToLines Count inside loop BATCH', count( $batch ));
 			if (count($batch) >= $batch_size) {
 				$geslibApiDbQueueManager->insertLinesIntoQueue( $batch );
 				$batch = [];
 			}
 			$i++;
 		}
+		$geslibApi->biblio_debug_log('Geslib GeslibApiLines::storeToLines Count outside loop count(batch)', 'outside' );
+		$geslibApi->biblio_debug_log('Geslib GeslibApiLines::storeToLines Count outside loop count(batch)', count($batch) );
 		// Don't forget the last batch
 		if ( !empty( $batch ) ) {
-			error_log( var_export( $line, true ) );
+			$geslibApi->biblio_debug_log('Geslib GeslibApiLines::storeToLines', var_export( $batch, true ) );
 			$geslibApiDbQueueManager->insertLinesIntoQueue( $batch );
 		}
 
@@ -485,13 +495,18 @@ class GeslibApiLines {
 	 * Añade datos de stock
 	 * @param  mixed $data
 	 * @param  mixed $log_id
-	 * @return void
+	 * @return boolean
 	 */
-	private function processB( $data, int $log_id ) {
+	private function processB( $data, int $log_id ): bool {
 		$geslibApiDbLinesManager = new GeslibApiDbLinesManager;
+		$geslibApiDbProductsManager = new GeslibApiDbProductsManager;
 		$content_array['stock'] = $data[2];
 		$content_array['geslib_id'] = $data[1];
+		if ($geslibApiDbProductsManager->check_product_stock_by_geslib_id($data[1], $data[2]) === false ) 
+			return false;
+
 		$geslibApiDbLinesManager->insertData($content_array, 'stock', $log_id, 'product');
+		return true;
 	}
 
 
@@ -624,11 +639,11 @@ class GeslibApiLines {
 	 * @param string $line
 	 *   The input line, e.g., 'Type|Other|Data'.
 	 *
-	 * @return string|bool
+	 * @return bool
 	 *   The input line if the type is in product key, FALSE otherwise.
 	 */
-	public function isInProductKey(string $line ) {
-		return in_array( explode( '|', $line )[0], self::$lineTypes) ? $line : false;
+	public function isInProductKey(string $line ): bool {
+		return in_array( explode( '|', $line )[0], self::$lineTypes);
 	}
 
 }

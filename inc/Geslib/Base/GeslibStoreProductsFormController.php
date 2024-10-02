@@ -184,8 +184,8 @@ class GeslibStoreProductsFormController extends BaseController
 
     public function ajaxHandleStoreProducts() {
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
-        $geslibApiDbManager = new GeslibApiDbManager;
-        $geslibApiDbManager->storeProducts();
+        $geslibApiDbProductsManager = new GeslibApiDbProductsManager;
+        $geslibApiDbProductsManager->storeProducts();
         //$progress = get_option('geslib_product_progress', 0);
         wp_send_json_success(['message' => 'Product Storing task has been queued', 'task_id' => $task_id]);
     }

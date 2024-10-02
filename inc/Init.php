@@ -5,7 +5,7 @@ namespace Inc\Biblio;
 use Inc\Biblio\Base\Enqueue;
 use Inc\Biblio\Pages;
 
- final class init
+ final class Init
  {
     /**
      * Store all the classes inside an array

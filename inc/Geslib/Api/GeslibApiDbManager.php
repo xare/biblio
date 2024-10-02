@@ -83,13 +83,19 @@ class GeslibApiDbManager {
 	 * @return bool
 	 */
 	public function deleteTerm( int $geslib_id, string $taxonomy_name ): bool {
-		$term = get_term_by('geslib_id', $geslib_id, $taxonomy_name);
+		$taxonomy_prefix = match($taxonomy_name) {
+			'autors' => 'autor_',
+			'editorials' => 'editorial_',
+			'product_cat' => 'category_',
+			default => '',
+		};
+		$term = get_term_by($taxonomy_prefix.'geslib_id', $geslib_id, $taxonomy_name);
 		if (false !== $term) {
 			try {
 				wp_delete_term($term->ID, $taxonomy_name);
 				return true;
 			} catch (Exception $e) {
-				error_log('function deleteTerm : '.$e->getMessage());
+				error_log('[Biblio - Geslib DB Manager] function deleteTerm : '.$e->getMessage());
 				return false;
 			}
 		}

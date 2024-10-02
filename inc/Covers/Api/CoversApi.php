@@ -6,6 +6,7 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\RequestException;
+use Inc\Biblio\Api\BiblioApi;
 use Psr\Http\Message\ResponseInterface;
 
 class CoversApi {
@@ -20,6 +21,7 @@ class CoversApi {
   	private $cegal_url_path;
   	private $cegal_url_user;
   	private $cegal_url_pass;
+	private $biblioApi;
 
 	public function __construct(){
 		$this->dilveSettings = get_option('covers_settings');
@@ -32,6 +34,7 @@ class CoversApi {
 		$this->cegal_url_path = "peticiones";
 		$this->cegal_url_user = $this->cegalSettings['cegal_user'];
     	$this->cegal_url_pass = isset($this->cegalSettings['cegal_pass']) ? $this->cegalSettings['cegal_pass'] : '';
+		$this->biblioApi = new BiblioApi;
 	}
 
 	public function get_query ($type, $isbn) {
@@ -43,15 +46,15 @@ class CoversApi {
 					.$this->cegal_url_user.'&CLAVE='
 					.$this->cegal_url_pass.'&ISBN='
 					.$isbn.'&TIPOFICHA=C';
-		} else {
-			return 'http://'
+		} 
+		return 'http://'
 			.$this->dilve_url_host
 			.$this->dilve_url_path.
 			'/getRecordsX.do?user='.
 			$this->dilve_url_user.
 			'&password='.$this->dilve_url_pass.
 			'&identifier='.$isbn;
-		}
+
 	}
 
 	/**
@@ -160,7 +163,7 @@ class CoversApi {
 				foreach ( $xml_book->MediaFile as $media ) {
 					// Assuming $media->MediaFileTypeCode contains the code to match.
 					$mediaFileTypeCode = (string) $media->MediaFileTypeCode;
-					error_log("[BIBLIO - Covers Api] Converted Media File Type Code: " . $mediaFileTypeCode);
+					$this->biblioApi->debug_log("Covers Api","Converted Media File Type Code: " . $mediaFileTypeCode);
 					switch($mediaFileTypeCode) {
 						case "03":
 						case "04":
@@ -168,41 +171,38 @@ class CoversApi {
 						case "06":
 							error_log( "[BIBLIO - Covers Api] INSIDE OF MATCH FUNCTION. " . PHP_EOL );
 							if ( !isset($book["cover_url"]) || $media->MediaFileLinkTypeCode == "06" ) {
-								error_log('[BIBLIO - Covers Api] Adding cover_url ' . PHP_EOL);
+								$this->biblioApi->debug_log("Covers Api","Adding cover_url " . PHP_EOL);
 								$book["cover_url"] = $this->get_dilve_file_url((string) $media->MediaFileLink, $isbn);
 							}
 						break;
 						case "07": break; // Nothing happens for case "07", equivalent to an empty break in switch.
 						case "08":
 							$book["image_author_url"] = (string) $this->get_dilve_file_url((string) $media->MediaFileLink, $isbn);
-							error_log("[BIBLIO - Covers Api] \n---> Recogido imagen del autor: " . $book["image_author_url"]);
-							error_log("[BIBLIO - Covers Api] \n---> Formato: " . $media->MediaFileFormatCode);
-							error_log("[BIBLIO - Covers Api] \n---> Tipo de Enlace: " . $media->MediaFileLinkTypeCode);
+							$this->biblioApi->debug_log("Covers Api"," Recogido imagen del autor: " . $book["image_author_url"]);
+							$this->biblioApi->debug_log("Covers Api","Formato: " . $media->MediaFileFormatCode);
+							$this->biblioApi->debug_log("Covers Api","Tipo de Enlace: " . $media->MediaFileLinkTypeCode);
 						break;
 						case "17" :
 							$book["image_publisher_url"] = (string) $this->get_dilve_file_url((string) $media->MediaFileLink, $isbn);
-							error_log("[BIBLIO - Covers Api] \n---> Recogido logo de editorial: " . $book["image_publisher_url"]);
-							error_log("[BIBLIO - Covers Api] \n---> Formato: " . $media->MediaFileFormatCode);
-							error_log("[BIBLIO - Covers Api] \n---> Tipo de Enlace: " . $media->MediaFileLinkTypeCode);
+							$this->biblioApi->debug_log("Covers Api","Recogido logo de editorial: " . $book["image_publisher_url"]);
+							$this->biblioApi->debug_log("Covers Api","Formato: " . $media->MediaFileFormatCode);
+							$this->biblioApi->debug_log("Covers Api","Tipo de Enlace: " . $media->MediaFileLinkTypeCode);
 						break;
 						case "51" :
 							$book["preview_media_url"] = $this->get_dilve_file_url((string) $media->MediaFileLink, $isbn); // Uncommented and corrected the variable name
-							error_log("[BIBLIO - Covers Api] \n---> Recogido fichero de preview: " . $book["preview_media_url"]);
-							error_log("[BIBLIO - Covers Api] \n---> Formato: " . $media->MediaFileFormatCode);
-							error_log("[BIBLIO - Covers Api] \n---> Tipo de Enlace: " . $media->MediaFileLinkTypeCode);
+							$this->biblioApi->debug_log("Covers Api"," Recogido fichero de preview: " . $book["preview_media_url"]);
+							$this->biblioApi->debug_log("Covers Api"," Formato: " . $media->MediaFileFormatCode);
+							$this->biblioApi->debug_log("Covers Api"," Tipo de Enlace: " . $media->MediaFileLinkTypeCode);
 						break;
 						default:
 							// Uncomment these lines if you want to execute them in the default case
-							error_log( "[BIBLIO - Covers Api] ".var_export( $media, true) );
-							error_log("[BIBLIO - Covers Api] \n-> Tipo de medio no definido (" . $media->MediaFileTypeCode . ") para el libro con ISBN " . $isbn . "\n\n");
+							$this->biblioApi->debug_log("Covers Api"," Tipo de medio no definido (" . $media->MediaFileTypeCode . ") para el libro con ISBN " . $isbn . "\n\n");
 					}
 				}
-				error_log( '[BIBLIO - Covers Api] BOOK: ' . var_export( $book, true ) );
 			}
 		} else {
 			$book = (string)$xml->error->text;
 		}
-		error_log("[BIBLIO - Covers Api] ".var_export($book, true));
 		return $book;
   	}
 
@@ -227,7 +227,7 @@ class CoversApi {
 			$url .= '&identifier='.$isbn.
 					'&resource='.urlencode($filename);
 		}
-		error_log('[BIBLIO - Covers Api] url: ' . var_export($url, true));
+		$this->biblioApi->debug_log("Covers Api"," url: " . var_export($url, true));
     	return $url;
   	}
 
@@ -248,11 +248,11 @@ class CoversApi {
 				$response = $client->get($url);
 			} catch( ConnectException $connectException ) {
 				$error = ['message'=> $connectException->getMessage()];
-				error_log( '[BIBLIO - Covers Api] Connection exception: ' . $connectException->getMessage() );
+				$this->biblioApi->debug_log("Covers Api","Connection exception: " . $connectException->getMessage() );
 				$coversApiDbLinesManager->setError( $isbn, $error['message'] );
 				return false;
 			} catch ( RequestException $requestException ) {
-				error_log( 'Request exception: ' . $requestException->getMessage() );
+				$this->biblioApi->debug_log("Covers Api","Request exception: " . $requestException->getMessage() );
 				if ($requestException->getResponse() instanceof ResponseInterface) {
 					$error['statusCode'] = $requestException->getResponse()->getStatusCode();
 					if ( $error['statusCode'] === 404 ) {
@@ -265,12 +265,12 @@ class CoversApi {
 					// Handle other exceptions
 					$error['message'] = 'Error: ' . $requestException->getMessage();
 				}
-				error_log("[BIBLIO - Covers Api] ".$error['message']);
+				$this->biblioApi->debug_log("Covers Api",$error['message']);
 				$coversApiDbLinesManager->setError( $isbn, $error['message'] );
 				return false;
 			} catch (\Exception $exception) {
 				$error['message'] = 'Error: ' . $exception->getMessage();
-				error_log("[BIBLIO - Covers Api] ".$error['message']);
+				$this->biblioApi->debug_log("Covers Api", $error['message']);
 				$coversApiDbLinesManager->setError( $isbn, $error['message'] );
 				return false;
 			}
@@ -285,18 +285,18 @@ class CoversApi {
 			// Check if the response is an error
 			if (is_wp_error($response)) {
 				// Handle error
-				error_log("[BIBLIO - Covers Api] Something went wrong: " . $response->get_error_message());
+				$this->biblioApi->debug_log("Covers Api", "Something went wrong: " . $response->get_error_message());
 				return false;
 			}
 			$body = (string) wp_remote_retrieve_body($response);
-			error_log("[BIBLIO - Covers Api] Response from API: " . $body);
+			$this->biblioApi->debug_log("Covers Api", "Response from API: " . $body);
 			$xmlString = (string) wp_remote_retrieve_body( $response );
 			$xmlString = (string) preg_replace('/[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]+/', '', $xmlString);
 			$xml = simplexml_load_string( $xmlString );
 			// Additional checks to ensure the XML and expected fields are present.
 			if ( !$xml || empty( $xml->LIBRO->PORTADA->IMAGEN_PORTADA ) || empty( $xml->LIBRO->PORTADA ) ) {
 				// Handle error - log or return false
-				error_log( '[BIBLIO - Covers Api] Error: XML or expected fields not found.' );
+				$this->biblioApi->debug_log("Covers Api", " Error: XML or expected fields not found." );
 				return false;
 			}
 			return [
@@ -325,14 +325,11 @@ class CoversApi {
 		string $type = 'dilve' ): mixed {
 			$isbn = (string) explode('.', $filename)[0];
 			$data = $this->fetch_cover($url, $isbn, $type);
-			error_log( "[BIBLIO - Covers Api] DATA FROM FETCH COVER: " . var_export( $data, true ) );
 			$data = ($type == "cegal") ? $data['imagedata'] : $data;
 			//$data = $this->search_dilve($isbn);
-			error_log( "[BIBLIO - Covers Api] TYPE: " . var_export( $type, true ) );
-			error_log( "[BIBLIO - Covers Api] DATA FROM FETCH COVER: " . var_export( $data, true ) );
 			if ( !$data ){
-				error_log( '[BIBLIO - Covers Api] Data from fetch_cover does not exist.' );
-				error_log( '[BIBLIO - Covers Api] '.$isbn. ' :Data from fetch_cover does not exist.' );
+				$this->biblioApi->debug_log("Covers Api", "Data from fetch_cover does not exist." );
+				$this->biblioApi->debug_log("Covers Api", $isbn. ' :Data from fetch_cover does not exist.' );
 				return false;
 			}
 
@@ -351,10 +348,10 @@ class CoversApi {
 					'guid' => preg_replace( '/\/\d{4}\/\d{1,2}\/portadas\//', '/portadas/', $existing_file[0]->guuid ),
 				]);
 				$file_id = $existing_file[0]->ID;
-				error_log( '[BIBLIO - Covers Api] '. $isbn. ': File: '. $file_id.' already exists.' );
+				$this->biblioApi->debug_log("Covers Api", $isbn. ': File: '. $file_id.' already exists.' );
 			} else {
 				$file_id = $coversApiDbManager->attachFile( $filepath, $data, $filename );
-				error_log( "[BIBLIO - Covers Api] THE FILE HAS BEEN ATTACHED: " . var_export($file_id , true ) );
+				$this->biblioApi->debug_log("Covers Api", "THE FILE HAS BEEN ATTACHED: " . var_export($file_id , true ) );
 			}
 			return ( $file_id > 0 ) ? get_post( $file_id ): false;
   	}
@@ -379,32 +376,29 @@ class CoversApi {
         foreach( $products as $product ) {
 			//if ( $index > 100 ) break;
 			// Get ean number from each product;
-			error_log('[BIBLIO - Covers Scan Products]'.var_export($product, true));
 			if( $product['ID'] == null ) {
-				error_log('[BIBLIO - Covers Scan Products] PRODUCT ID IS NULL', true);
+				$this->biblioApi->debug_log("Covers Api", "Scan Products - Covers Scan Products] PRODUCT ID IS NULL");
 				continue;
 			}
-			error_log('[BIBLIO - Covers Scan Products] POSTMETA: '.var_export(get_post_meta($product['ID']), true));
             $ean = get_post_meta( $product['ID'], '_ean', true );
-			error_log('[BIBLIO - Covers Scan Products] EAN: '. $ean );
+			$this->biblioApi->debug_log("Covers Api", 'EAN: '. $ean );
 			$url = (string) $this->get_query($type, $ean );
 
 			if ( $coversApiDbManager->hasAttachment( $product['ID'] ) ) {
-				error_log('[BIBLIO - Covers Scan Products]This product with EAN: '. $ean . ' has already a cover.' );
+				$this->biblioApi->debug_log("Covers Api", 'Scan Products - This product with EAN: '. $ean . ' has already a cover.' );
 				continue;
 			}
 			if ($this->validateEAN($ean) == false) continue;
 
 			$filepath = (string) sprintf("%s/portadas/%s", wp_upload_dir()['basedir'], $ean.'.jpg');
-			error_log( "[BIBLIO - Covers Api] FILEPATH: " . $filepath );
+			$this->biblioApi->debug_log("Covers Api", " Scan Products - FILEPATH: " . $filepath );
 			$line_id = $coversApiDbLinesManager->insertLinesData($log_id, $ean, $filepath, $type);
 
 			if ( $type == 'dilve' && $ean != '' ) {
             	$book = $this->search_dilve($ean);
-				error_log("[BIBLIO - Covers Api] BOOK: " . var_export( $book, true ) );
 				if( $book && is_array($book) && isset($book['cover_url'] ) ) {
 					if ($coversApiDbManager->hasAttachment( $product['ID'] ) ) {
-						error_log('[BIBLIO - Covers Api] This product has already a cover: '.$ean);
+						$this->biblioApi->debug_log("Covers Api", 'Scan Products - This product has already a cover: '.$ean);
 						continue;
 					}
 					
@@ -414,9 +408,9 @@ class CoversApi {
 					if ( $cover_post = $this->create_cover( $book['cover_url'], $ean.'.jpg', 'image/jpeg', FALSE, $type ) ) {
 						$coversApiDbManager->set_featured_image_for_product($cover_post->ID, $ean);
 						$coversApiDbLinesManager->set_url_target($line_id, $product['ID']);
-						error_log('[BIBLIO - Covers Api] The coverpost was properly created.');
+						$this->biblioApi->debug_log("Covers Api", "The coverpost was properly created.");
 					} else {
-						error_log(' [BIBLIO - Covers Api]The coverpost was not properly created');
+						$this->biblioApi->debug_log("Covers Api","The coverpost was not properly created");
 					}
 					$coversApiDbManager->set_covers_url($ean, $book['cover_url']);
 				}
@@ -426,18 +420,18 @@ class CoversApi {
 					$coversApiDbManager->set_featured_image_for_product( $file->ID, $ean );
 					$coversApiDbLinesManager->setBook($product['post_title'], $product['ID'], $line_id);
 					$coversApiDbLinesManager->set_url_target($line_id, $product['ID']);
-					error_log('[BIBLIO - Covers Api] The coverpost was properly created for product: '.$product['post_title']);
+					$this->biblioApi->debug_log("Covers Api","The coverpost was properly created for product: ".$product['post_title']);
 				} else {
-					error_log('[BIBLIO - Covers Api] The coverpost was not properly created');
+					$this->biblioApi->debug_log("Covers Api","The coverpost was not properly created");
 				}
 
 				$coversApiDbManager->set_covers_url($ean, $url);
 			}
 			$coversApiDbLogManager->setLogStatus($log_id, 'processing');
 			$response[] = [ 'id' => $product['ID'] ];
-			error_log('[BIBLIO - Covers Api] Offset now: '. $offset );
+			$this->biblioApi->debug_log("Covers Api","Offset now: ". $offset );
 			$progress = ( $offset / $totalLines ) * 100;
-			error_log('[BIBLIO - Covers Api]Progress now: '. $progress );
+			$this->biblioApi->debug_log("Covers Api","Progress now: ". $progress );
 			array_push($eans, $ean);
 			$index++;
         }
@@ -445,7 +439,7 @@ class CoversApi {
 		$response['eans'] = $eans;
 		$response['message'] = "[BIBLIO - Covers Api] " . $batch_size . " books have been processed: ";
 		$response['progress'] = number_format($progress, 2)." %";
-		if($hasMore == false) {
+		if ( $hasMore == false ) {
 			$coversApiDbLogManager->setLogStatus($log_id, 'processed');
 			$coversApiDbLogManager->set_processed_products($log_id, $offset + $index);
 		}

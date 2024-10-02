@@ -1,4 +1,5 @@
 <?php
+namespace Inc\Geslib\Api;
 class GeslibApi {
 
     public function fileThis(string $message, string $type = "Notice", array $placeholders = []) {
@@ -42,5 +43,11 @@ class GeslibApi {
                 error_log($message, 0, '', '', $context);
                 break;
         }
+    }
+
+    public function biblio_debug_log(string $title, string $message) {
+        $filepath = ABSPATH . 'wp-content/plugins/biblio/logs/debug.log';
+        $message = '[BIBLIO DEBUG -  '. $title . ' ] ' . date('Y-m-d H:i:s') . ' ' . $message . PHP_EOL;
+        file_put_contents($filepath, $message, FILE_APPEND);
     }
 }

@@ -82,11 +82,21 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 
 			$book_price = ( isset( $content['pvp'] ) && $content['pvp'] != null ) ? floatval(str_replace(',', '.', $content['pvp'])) : 0.00;
 			$existing_product = null;
-			$args = [
+			/* $args = [
 				'post_type'      => 'product',
 				'posts_per_page' => 1,
 				'post_status'    => 'publish',
 				'title'          => $book_name
+			]; */
+			$args = [
+				'post_type'      => 'product',
+				'posts_per_page' => 1,
+				'meta_query'     => [
+					[
+						'key'   => 'geslib_id',
+						'value' => $geslib_id,
+					],
+				],
 			];
 
 			$products = new WP_Query($args);
@@ -125,7 +135,7 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 			try {
 				$product_id = $product->save();
 			} catch(\Exception $exception) {
-				error_log('[Biblio - Geslib ERROR] Failed to store product'. $exception->getMessage());
+				error_log('[Biblio - Geslib DB Products Manager] Failed to store product'. $exception->getMessage());
 			}
 
 			if( isset($ean) ){
@@ -158,7 +168,7 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 				try {
 					wp_set_object_terms($product_id, $editorial_term, 'editorials', true);
 				} catch(\Exception $exception) {
-					error_log('[Biblio - Geslib ERROR] Term was not properly assigned to product: '. $exception->getMessage());
+					error_log('[Biblio - Geslib DB Products Manager] Term was not properly assigned to product: '. $exception->getMessage());
 				}
 			}
 
@@ -184,7 +194,7 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 					try {
 						wp_set_object_terms( $product_id, $author_term, 'autors', true );
 					} catch( \Exception $exception ){
-						error_log( '[Biblio - Geslib ERROR] Failed to store author with id'. $author_term.' to product with id'. $product_id.': '.$exception->getMessage() );
+						error_log( '[Biblio - Geslib DB Products Manager] Failed to store author with id'. $author_term.' to product with id'. $product_id.': '.$exception->getMessage() );
 						continue;
 					}
 				}
@@ -226,7 +236,7 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 						try {
 							wp_set_object_terms($product_id, $category_term, 'product_cat', true);
 						} catch(\Exception $exception) {
-							error_log('[Biblio - Geslib ERROR] Term was not properly assigned to product: '. $exception->getMessage());
+							error_log('[Biblio - Geslib DB Products Manager] Term was not properly assigned to product: '. $exception->getMessage());
 						}
 					}
 				}
@@ -234,6 +244,22 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 		}
 		return $product_id;
     }
+
+	// Helper function to get the product ID by 'geslib_id'
+	function wc_get_product_id_by_geslib_id( $geslib_id ) {
+		global $wpdb;
+
+		// Query the database to find the product ID based on 'geslib_id' meta key
+		$product_id = $wpdb->get_var( $wpdb->prepare("
+			SELECT post_id 
+			FROM $wpdb->postmeta 
+			WHERE meta_key = 'geslib_id' 
+			AND meta_value = %s
+			LIMIT 1
+		", $geslib_id) );
+
+		return $product_id ? intval( $product_id ) : false;
+	}
 
     /**
      * stockProduct
@@ -271,16 +297,16 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
                $query->the_post();
                $product_id = get_the_ID();
                $product = wc_get_product( $product_id );
-
-               if ( $product ) {
+			   if( $product->get_stock_quantity() != $stock ) continue;
+               if ( $product) {
                    // Update the stock
                    $product->set_stock_quantity( $stock );
                    try {
 						$product->save();
 				   } catch( \Exception $exception ) {
-						error_log('Product stock for geslib_id '.$geslib_id.' has NOT been updated:'. $exception->getMessage());
+						error_log('[Biblio - Geslib DB Products Manager] Product stock for geslib_id '.$geslib_id.' has NOT been updated:'. $exception->getMessage());
 				   }
-               }
+			   } 
            }
        }
 
@@ -386,14 +412,48 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 				try{
 					$product->delete( true );
 				} catch(\Exception $exception) {
-					error_log($exception->getMessage());
+					error_log("[Biblio - Geslib DB Products Manager] ".$exception->getMessage());
 				}
 			}
 			wp_reset_postdata();
 			return true;
 		} else {
-			error_log('No products found with the given geslib_id '.$geslib_id);
+			error_log('[Biblio - Geslib DB Products Manager] No products found with the given geslib_id '.$geslib_id);
 			return false;
 		}
 	}
+
+	public function check_product_stock_by_geslib_id($geslib_id, $stock = 0) :bool {
+		// Fetch the product using the previous function
+		$product = $this->get_product_by_geslib_id($geslib_id);
+	
+		if ($product) {
+			return (bool) $stock != $product->get_stock_quantity();
+		}
+	
+		return false; // Return false if no product found
+	}
+	
+	private function get_product_by_geslib_id($geslib_id): mixed {
+		// Query products based on custom field
+		$args = array(
+			'meta_key'   => 'geslib_id',   // Your custom meta key
+			'meta_value' => $geslib_id,    // The value of your custom meta
+			'post_type'  => 'product',
+			'posts_per_page' => 1,         // Limit to 1 product
+		);
+	
+		$query = new WP_Query($args);
+	
+		if ($query->have_posts()) {
+			$query->the_post(); // Get the first product
+			$product_id = get_the_ID();
+			wp_reset_postdata();
+			return wc_get_product($product_id);
+		}
+	
+		wp_reset_postdata();
+		return false;
+	}
+	
 }

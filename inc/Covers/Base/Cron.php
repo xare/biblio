@@ -13,7 +13,6 @@ use Inc\Covers\Api\CoversApiDbLogManager;
 class Cron extends BaseController {
     public function register() {
 
-        //add_filter( 'cron_schedules', [ $this,'custom_cron_schedule'] );
         if ( ! wp_next_scheduled( 'covers_cron_event' ) ) {
             wp_schedule_event( time(), 'twicedaily', 'covers_cron_event' );
         }

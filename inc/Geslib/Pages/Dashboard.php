@@ -84,11 +84,11 @@ class Dashboard extends BaseController {
     public function setSettings()
 	{
 		$default_settings = [
-			'geslib_folder_index' => ''
+			'geslib_folder_index' => 'geslib'
 		];
-		foreach ($this->managers as $key => $label) {
+		/* foreach ($this->managers as $key => $label) {
 			$default_settings[$key] = 0;
-		}
+		} */
 		$args = [
 			[
 				'option_group'=> 'geslib_settings',
@@ -100,7 +100,12 @@ class Dashboard extends BaseController {
 		$this->settings->setSettings( $args );
 
 		// Save the default option if it doesn't exist
-        $saved_settings = get_option('geslib_settings');
+		// Ensure it's an array before merging
+		$saved_settings = get_option('geslib_settings');
+		if (!is_array($saved_settings)) {
+			$saved_settings = [];
+		}
+        
         if (!$saved_settings) {
             update_option('geslib_settings', $default_settings);
         } else {
@@ -125,7 +130,7 @@ class Dashboard extends BaseController {
 
     public function setFields()
 	{
-		$line_types = $this->callbacks_mngr::getLineTypes();
+		//$line_types = $this->callbacks_mngr::getLineTypes();
 		$args = [
                     [
 						'id'=> 'geslib_folder_index',
@@ -140,7 +145,7 @@ class Dashboard extends BaseController {
 							]
 		            ]
                 ];
-		foreach ($line_types as $key => $label) {
+		/* foreach ($line_types as $key => $label) {
 			$args[] = [
 				'id' => $key,
 				'title' => '<em>['.$key.']</em> ' . $label,
@@ -153,7 +158,7 @@ class Dashboard extends BaseController {
 					'class' => 'ui-toggle'
 				]
 			];
-		}
+		} */
 		$this->settings->setFields( $args );
 	}
 }
