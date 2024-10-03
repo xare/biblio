@@ -2,7 +2,15 @@
 
 namespace Inc\Geslib\Api;
 
+use Inc\Biblio\Api\BiblioApi;
+
 class GeslibApiDbQueueManager extends GeslibApiDbManager {
+
+	private $biblioApi;
+
+	public function __construct() {
+		$this->biblioApi = new BiblioApi;
+	}
 
     /**
      * insertLinesIntoQueue
@@ -21,7 +29,7 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 				$geslibApi->biblio_debug_log('Geslib GeslibApiDbQueueManager::insertLinesIntoQueue', var_export( $item, true ) );
 				$wpdb->insert($wpdb->prefix . self::GESLIB_QUEUES_TABLE, $item);
 			} catch( \Exception $exception ) {
-				$geslibApi->biblio_debug_log('ERROR  - Geslib DB Queue Manager - insertLinesIntoQueue', $exception->getMessage() );
+				$this->biblioApi->debug_log('ERROR  - Geslib DB Queue Manager - insertLinesIntoQueue', $exception->getMessage() );
 				continue;
             }
 		}
@@ -49,10 +57,12 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 						],['%d','%d','%s','%s']
 					);
 				} catch( \Exception $exception ) {
-					error_log("[Biblio - Geslib DB Queue Manager - insertProductsIntoQueue]" .$exception->getMessage());
+					$this->biblioApi->debug_log('ERROR  - Geslib DB Queue Manager - insertProductsIntoQueue', $exception->getMessage() );
+					continue;
 				}
 			} catch( \Exception $exception ) {
-				error_log("[Biblio - Geslib DB Queue Manager - insertProductsIntoQueue]" .$exception->getMessage());
+				$this->biblioApi->debug_log('ERROR  - Geslib DB Queue Manager - insertProductsIntoQueue', $exception->getMessage() );
+				continue;
 			}
 		}
 	}
@@ -80,11 +90,11 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 						],['%d','%d','%s','%s']
 					);
 				} catch( \Exception $exception ) {
-					error_log("[Biblio - Geslib DB Queue Manager - insertAuthorsIntoQueue]" .$exception->getMessage());
+					$this->biblioApi->debug_log('ERROR  - Geslib DB Queue Manager - insertAuthorsIntoQueue', $exception->getMessage() );
 					continue;
 				}
 			} catch( \Exception $exception ) {
-				error_log("[Biblio - Geslib DB Queue Manager - insertAuthorsIntoQueue]" .$exception->getMessage());
+				$this->biblioApi->debug_log('ERROR  - Geslib DB Queue Manager - insertAuthorsIntoQueue', $exception->getMessage() );
 				continue;
 			}
 		}
@@ -107,11 +117,11 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 						],['%d','%d','%s','%s']
 					);
 				} catch( \Exception $exception ) {
-					error_log("[Biblio - Geslib DB Queue Manager - insertEditorialsIntoQueue]" .$exception->getMessage());
+					$this->biblioApi->debug_log('ERROR  - Geslib DB Queue Manager - insertEditorialsIntoQueue', $exception->getMessage() );
 					continue;
 				}
 			} catch( \Exception $exception ) {
-				error_log("[Biblio - Geslib DB Queue Manager - insertEditorialsIntoQueue]" .$exception->getMessage());
+				$this->biblioApi->debug_log('ERROR  - Geslib DB Queue Manager - insertEditorialsIntoQueue', $exception->getMessage() );
 				continue;
 			}
 		}
@@ -134,11 +144,11 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 						], [ '%d', '%d', '%s', '%s' ]
 					);
 				} catch( \Exception $exception ) {
-					error_log("[Biblio - Geslib DB Queue Manager - insertColeccionesIntoQueue]" .$exception->getMessage());
+					$this->biblioApi->debug_log('ERROR  - Geslib DB Queue Manager - insertColeccionesIntoQueue', $exception->getMessage() );
 					continue;
 				}
 			} catch( \Exception $exception ) {
-				error_log("[Biblio - Geslib DB Queue Manager - insertColeccionesIntoQueue]" .$exception->getMessage());
+				$this->biblioApi->debug_log('ERROR  - Geslib DB Queue Manager - insertColeccionesIntoQueue', $exception->getMessage() );
 				continue;
 			}
 		}
@@ -167,11 +177,11 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 						],['%d','%d','%s','%s']
 					);
 				} catch( \Exception $exception ) {
-					error_log('[Biblio - Geslib DB Queue Manager - insertCategoriesIntoQueue] Unable to delete from queue store_categories for ' . var_export($item,true) . ' - ' . $exception->getMessage());
+					$this->biblioApi->debug_log('ERROR  - Geslib DB Queue Manager - insertCategoriesIntoQueue', $exception->getMessage() );
 					continue;
 				}
 			} catch( \Exception $exception ) {
-				error_log('[Biblio - Geslib DB Queue Manager - insertCategoriesIntoQueue] Unable to insert into queue for '.var_export($item,true) . ' - ' . $exception->getMessage());
+				$this->biblioApi->debug_log('ERROR  - Geslib DB Queue Manager - insertCategoriesIntoQueue', $exception->getMessage() );
 				continue;
 			}
 		}
@@ -204,7 +214,7 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 			);
 			return true;
 		} catch(\Exception $exception) {
-			error_log("[Biblio - Geslib DB Queue Manager - deleteFromQueue] Failed to delete task: Type {$type}, Geslib ID {$geslib_id}, Log ID {$log_id} :".$exception->getMessage());
+			$this->biblioApi->debug_log('ERROR  - Geslib DB Queue Manager - deleteItemFromQueue', $exception->getMessage() );
 			return false;
 		}
 	}
@@ -230,7 +240,7 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 			);
             return true;
         } catch (\Exception $exception) {
-            error_log("[Biblio - Geslib DB Queue Manager - deleteItemsFromQueue] Failed to delete queue: {$type}:".$exception->getMessage());
+			$this->biblioApi->debug_log('ERROR  - Geslib DB Queue Manager - deleteItemsFromQueue', $exception->getMessage() );
             return false;
         }
     }
@@ -271,7 +281,7 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 			return true;
 		} else {
 			// Optionally handle the case where the type is not recognized
-			error_log("[Biblio - Geslib DB Queue Manager - processFromQueue] Unrecognized queue type: $type");
+			$this->biblioApi->debug_log('ERROR  - Geslib DB Queue Manager - processFromQueue', 'Unrecognized queue type: ' . $type);
 			return false;
 		}
 	}
@@ -298,7 +308,7 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 							'%s',
 							['%d','%s'] );
 			} catch (\Exception $exception) {
-				error_log("[Biblio - Geslib DB Queue Manager - processBatchBuildContent] Failed to update task: Type {$type}, Geslib ID {$task->geslib_id}, Entity {$task->entity} :".$exception->getMessage());
+				$this->biblioApi->debug_log('ERROR  - Geslib DB Queue Manager - processBatchBuildContent', $exception->getMessage() );
 				continue;
 			}
 		}

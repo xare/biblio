@@ -3,6 +3,7 @@
 namespace Inc\Geslib\Api;
 
 use Exception;
+use Inc\Biblio\Api\BiblioApi;
 use Inc\Geslib\Api\GeslibApiSanitize;
 use WC_Product_Simple;
 use WP_Query;
@@ -27,6 +28,12 @@ class GeslibApiDbManager {
 		'status', // string waiting | enqueued | processed
 		'lines_count', // int number of lines
 	];
+
+	private $biblioApi;
+
+    public function __construct() {
+        $this->biblioApi = new BiblioApi;
+    }
 
 	/**
 	 * countRows
@@ -95,7 +102,7 @@ class GeslibApiDbManager {
 				wp_delete_term($term->ID, $taxonomy_name);
 				return true;
 			} catch (Exception $e) {
-				error_log('[Biblio - Geslib DB Manager] function deleteTerm : '.$e->getMessage());
+				$this->biblioApi->debug_log('Geslib DB Manager','function deleteTerm : '. $e->getMessage());
 				return false;
 			}
 		}

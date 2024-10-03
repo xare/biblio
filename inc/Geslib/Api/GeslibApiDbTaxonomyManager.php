@@ -3,9 +3,15 @@
 namespace Inc\Geslib\Api;
 
 use Exception;
+use Inc\Biblio\Api\BiblioApi;
 
 class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 
+	private $BiblioApi;
+
+	public function __construct() {
+		$this->BiblioApi = new BiblioApi;
+	}
     public function storeEditorials( int $geslib_id, $editorial ) {
 		$term_name = $editorial->content;
 		$term_slug = $this->_create_slug( $term_name );
@@ -34,21 +40,18 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 
         // Check for errors
         if ( is_wp_error($term_data) ) {
-            // Handle the error here
-           error_log("[BIBLIO Geslib Taxonomy Manager reorganizeProductCategories] ". $term_data->get_error_message());
-		   return false;
+			$this->BiblioApi->debug_log("Geslib Taxonomy Manager reorganizeProductCategories", $term_data->get_error_message() );
+		   	return false;
         }
 		return get_term($term_data['term_id'], 'editorials');
     }
 
 	public function storeColecciones( int $geslib_id, $coleccion ) {
-		error_log("[BIBLIO Geslib Taxonomy Manager storeColecciones] ");
-		error_log( var_export( $coleccion,true ) );
+		$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeColecciones", var_export($coleccion, true) );
 		$coleccion = json_decode($coleccion);
 		$term_name = $coleccion->name;
 		if ( $coleccion->content === null ){
-			error_log("[BIBLIO Geslib Taxonomy Manager storeColecciones] ");
-			error_log( var_export( $coleccion,true ) );
+			$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeColecciones", var_export($coleccion, true) );
 			return false;
 		}
 		$term_slug = $this->_create_slug( $term_name );
@@ -78,8 +81,7 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
         // Check for errors
         if ( is_wp_error($term_data) ) {
             // Handle the error here
-			error_log("[BIBLIO Geslib Taxonomy Manager storeColecciones] ");
-            error_log($term_data->get_error_message());
+			$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeColecciones", $term_data->get_error_message() );
 			return false;
         }
 		return get_term($term_data['term_id'], 'colecciones');
@@ -114,9 +116,7 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 
         // Check for errors
         if ( is_wp_error($term_data) ) {
-            // Handle the error here
-			error_log("[BIBLIO Geslib Taxonomy Manager storeAutors] ");
-            error_log($term_data->get_error_message());
+            $this->BiblioApi->debug_log("Geslib Taxonomy Manager storeAutors", $term_data->get_error_message() );
 			return false;
         }
 		return get_term($term_data['term_id'], 'autors');
@@ -153,21 +153,21 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 			// Check for errors
 			if (is_wp_error($result)) {
 				// Handle error here
-				error_log('[BIBLIO Geslib Taxonomy Manager storeCategory] Category did not get created for term slug'.$term_slug.' '.$result->get_error_message());
+				$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeCategory", $result->get_error_message() );
 				return false;
 			}
 
 			// Return the created category
 			return get_term($result['term_id'], 'product_cat');
 		} else {
-			error_log("[BIBLIO Geslib Taxonomy Manager storeCategory] Category with $geslib_id geslib_id number already exists");
+			$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeCategory", "Category with $geslib_id geslib_id number already exists" );
 			return false;
 		}
 	}
 	public function storeEditorial( $geslib_id, $content){
 		$editorial = json_decode( $content);
 		if ( $editorial->name === null ){
-			error_log( var_export( $editorial,true ) );
+			$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeEditorial", var_export( $editorial, true) );
 			return false;
 		}
         $geslibApiSanitize = new GeslibApiSanitize();
@@ -182,8 +182,7 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 				'slug' => $term_slug,
 				'description' => $term_description,
 			]);
-			error_log("[BIBLIO Geslib Taxonomy Manager storeEditorial]");
-			error_log(var_export($term_data, true));
+			$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeEditorial", var_export( $term_data, true) );
 			if( is_wp_error($term_data) ) return false;
 			update_term_meta($term_data['term_id'], 'editorial_geslib_id', $geslib_id);
     	} else {
@@ -199,7 +198,7 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
     	}
 		if ( is_wp_error($term_data) ) {
             // Handle the error here
-            error_log($term_data->get_error_message());
+			$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeEditorial", $term_data->get_error_message() );
 			return false;
 		}
 		return get_term($term_data['term_id'], 'editorials');
@@ -229,13 +228,13 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 					'description' => $term_description,
 				]);
 				if (is_wp_error($term_data)) {
-					error_log("[BIBLIO Geslib taxonomy manager store Author] Author did not get created for term slug ".$term_slug." ". $term_data->get_error_message());
+					$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeAuthor", $term_data->get_error_message() );
 					return false;
 				}
 				$term_meta = update_term_meta($term_data['term_id'], 'author_geslib_id', $geslib_id);
                 return true;
 			} catch (\Exception $exception) {
-				error_log("[BIBLIO Geslib taxonomy manager store Author] ". $exception->getMessage());
+				$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeAuthor", $exception->getMessage() );
 				return false;
 			}
     	} else {
@@ -252,7 +251,7 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
         // Check for errors
         if ( is_wp_error($term_data) ) {
             // Handle the error here
-            error_log( "[BIBLIO Geslib taxonomy manager store Author] ".$term_data->get_error_message());
+			$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeAuthor", $term_data->get_error_message() );
 			return false;
         }
 		return get_term($term_data['term_id'], 'autors');
@@ -283,13 +282,13 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 					'description' => $term_description,
 				]);
 				if (is_wp_error($term_data)) {
-					error_log("[BIBLIO Geslib taxonomy manager store Coleccion] ".$term_data->get_error_message());
+					$this->BiblioApi->debug_log("Geslib Taxonomy Manager store Coleccion", $term_data->get_error_message() );
 					return false;
 				}
 				$term_meta = update_term_meta($term_data['term_id'], 'author_geslib_id', $geslib_id);
                 return true;
 			} catch (\Exception $exception) {
-				error_log("[BIBLIO Geslib taxonomy manager store Coleccion] ".$exception->getMessage());
+				$this->BiblioApi->debug_log("Geslib Taxonomy Manager store Coleccion", $exception->getMessage() );
 				return false;
 			}
     	} else {
@@ -304,13 +303,13 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 								]);
 				if ( is_wp_error($term_data) ) {
 					// Handle the error here
-					error_log( "[BIBLIO Geslib taxonomy manager store Coleccion] ".$term_data->get_error_message());
+					$this->BiblioApi->debug_log("Geslib Taxonomy Manager store Coleccion", $term_data->get_error_message() );
 					return false;
 				}
 				add_term_meta($term_data['term_id'],'coleccion_geslib_id', $geslib_id);
 				return true;
 			} catch(Exception $exception) {
-				error_log( "[BIBLIO Geslib taxonomy manager store Coleccion] ".$exception->getMessage());
+				$this->BiblioApi->debug_log("Geslib Taxonomy Manager store Coleccion", $exception->getMessage() );
 				return false;
 			}
     	}
@@ -351,14 +350,14 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 			// Check for errors
 			if (is_wp_error($result)) {
 				// Handle error here
-				error_log("[BIBLIO Geslib taxonomy manager store Product Category] ". $result->get_error_message());
+				$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeProductCategory", $result->get_error_message() );
 				return false;
 			}
 
 			// Return the created category
 			return get_term($result['term_id'], 'product_cat');
 		} else {
-			error_log("[BIBLIO - Geslib Taxonomy Manager storeProductCategory] Category already exists");
+			$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeProductCategory", "Category already exists" );
 			return false;
 		}
 	}
@@ -385,6 +384,7 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 
 			// Extract the parent category's geslib_id
 			$parent_category_geslib_id = substr($category_geslib_id, 0, -2);
+			$this->BiblioApi->debug_log('Taxonomy Manager  - reorganizeProductCategories','category_geslib_id: '.$category_geslib_id.' - parent_category_geslib_id: '.$parent_category_geslib_id);
 			// Find the parent term based on category_geslib_id
 			if ( $parent_category_geslib_id != '' ) {
 				$args = [
@@ -408,7 +408,7 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 						}
 					}
 				} else {
-					error_log('[BIBLIO - Geslib Taxonomy Manager reorganizeProductCategories] No terms were found or there was an error');
+					$this->BiblioApi->debug_log('Taxonomy Manager  - reorganizeProductCategories','No parent terms found');
 					continue;
 				}
 			}

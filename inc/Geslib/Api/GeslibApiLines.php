@@ -2,6 +2,7 @@
 
 namespace Inc\Geslib\Api;
 
+use Inc\Biblio\Api\BiblioApi;
 use Inc\Geslib\Api\GeslibApiDbLinesManager;
 use Inc\Geslib\Api\GeslibApiDbManager;
 use WP_CLI;
@@ -173,12 +174,13 @@ class GeslibApiLines {
 	private string $mainFolderPath;
 	private $geslibSettings;
 	private $geslibApiSanitize;
-
+	private $biblioApi;
 	public function __construct() {
 		$this->geslibSettings = get_option('geslib_settings');
 		$this->mainFolderPath = WP_CONTENT_DIR . "/uploads/".$this->geslibSettings['geslib_folder_index']."/";
 		$this->db = new GeslibApiDbManager();
 		$this->geslibApiSanitize = new GeslibApiSanitize();
+		$this->biblioApi = new BiblioApi;
 	}
 
 	/**
@@ -424,6 +426,7 @@ class GeslibApiLines {
 	private function process5( $data, $log_id ) {
 		$geslib_category_id = $data[1];
 		$geslib_product_id = $data[2];
+		$this->biblioApi->debug_log('process5', 'geslib_category_id: ' . $geslib_category_id . ' geslib_product_id: ' . $geslib_product_id);
 		$content_array = [];
 		if($geslib_category_id !== 0 && $geslib_category_id != '') {
 			$content_array['categories'][$geslib_category_id] = $geslib_product_id;
