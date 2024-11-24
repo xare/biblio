@@ -7,10 +7,10 @@ use Inc\Biblio\Api\BiblioApi;
 
 class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 
-	private $BiblioApi;
+	private $biblioApi;
 
 	public function __construct() {
-		$this->BiblioApi = new BiblioApi;
+		$this->biblioApi = new BiblioApi;
 	}
     public function storeEditorials( int $geslib_id, $editorial ) {
 		$term_name = $editorial->content;
@@ -40,18 +40,17 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 
         // Check for errors
         if ( is_wp_error($term_data) ) {
-			$this->BiblioApi->debug_log("Geslib Taxonomy Manager reorganizeProductCategories", $term_data->get_error_message() );
+			$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $term_data->get_error_message(), 'geslib' );
 		   	return false;
         }
 		return get_term($term_data['term_id'], 'editorials');
     }
 
 	public function storeColecciones( int $geslib_id, $coleccion ) {
-		$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeColecciones", var_export($coleccion, true) );
 		$coleccion = json_decode($coleccion);
 		$term_name = $coleccion->name;
 		if ( $coleccion->content === null ){
-			$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeColecciones", var_export($coleccion, true) );
+			$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, var_export($coleccion, true), 'geslib' );
 			return false;
 		}
 		$term_slug = $this->_create_slug( $term_name );
@@ -81,7 +80,7 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
         // Check for errors
         if ( is_wp_error($term_data) ) {
             // Handle the error here
-			$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeColecciones", $term_data->get_error_message() );
+			$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $term_data->get_error_message(), 'geslib' );
 			return false;
         }
 		return get_term($term_data['term_id'], 'colecciones');
@@ -116,7 +115,7 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 
         // Check for errors
         if ( is_wp_error($term_data) ) {
-            $this->BiblioApi->debug_log("Geslib Taxonomy Manager storeAutors", $term_data->get_error_message() );
+            $this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $term_data->get_error_message(), 'geslib' );
 			return false;
         }
 		return get_term($term_data['term_id'], 'autors');
@@ -153,21 +152,21 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 			// Check for errors
 			if (is_wp_error($result)) {
 				// Handle error here
-				$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeCategory", $result->get_error_message() );
+				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $result->get_error_message(), 'geslib' );
 				return false;
 			}
 
 			// Return the created category
 			return get_term($result['term_id'], 'product_cat');
 		} else {
-			$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeCategory", "Category with $geslib_id geslib_id number already exists" );
+			$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Category with $geslib_id geslib_id number already exists" );
 			return false;
 		}
 	}
 	public function storeEditorial( $geslib_id, $content){
 		$editorial = json_decode( $content);
 		if ( $editorial->name === null ){
-			$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeEditorial", var_export( $editorial, true) );
+			$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Editorial is null. ' . var_export( $editorial, true), 'geslib' );
 			return false;
 		}
         $geslibApiSanitize = new GeslibApiSanitize();
@@ -176,14 +175,18 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 		$term_description = $term_name;
 		$term = term_exists( $term_name, 'editorials' ); // check if term already exists
 		if ( 0 !== $term && null !== $term ) {
-			// If the term exists, update it
-			$term_data = wp_update_term( $term['term_id'], 'editorials', [
-				'name' => $term_name,
-				'slug' => $term_slug,
-				'description' => $term_description,
-			]);
-			$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeEditorial", var_export( $term_data, true) );
-			if( is_wp_error($term_data) ) return false;
+			try{
+				// If the term exists, update it
+				$term_data = wp_update_term( $term['term_id'], 'editorials', [
+					'name' => $term_name,
+					'slug' => $term_slug,
+					'description' => $term_description,
+				]);
+				$this->biblioApi->debug_log('INFO Editorial updated '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, var_export( $term_data, true), 'geslib' );	
+			} catch (Exception $e) {
+					$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $e->getMessage(), 'geslib' );
+					return false;
+			}
 			update_term_meta($term_data['term_id'], 'editorial_geslib_id', $geslib_id);
     	} else {
         	// Otherwise, insert a new term
@@ -198,7 +201,7 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
     	}
 		if ( is_wp_error($term_data) ) {
             // Handle the error here
-			$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeEditorial", $term_data->get_error_message() );
+			$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $term_data->get_error_message(), 'geslib' );
 			return false;
 		}
 		return get_term($term_data['term_id'], 'editorials');
@@ -212,6 +215,7 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
      */
     public function storeAuthor( int $geslib_id, string $content): mixed {
 		$author = json_decode( $content );
+		var_dump($author);
 		if ( $author === null ) return false;
 		$geslibApiSanitize = new GeslibApiSanitize;
 		$term_name = $geslibApiSanitize->utf8_encode($author->name);
@@ -227,14 +231,15 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 					'slug' => $term_slug,
 					'description' => $term_description,
 				]);
+				
 				if (is_wp_error($term_data)) {
-					$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeAuthor", $term_data->get_error_message() );
+					$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $term_data->get_error_message(), 'geslib' );
 					return false;
 				}
 				$term_meta = update_term_meta($term_data['term_id'], 'author_geslib_id', $geslib_id);
                 return true;
 			} catch (\Exception $exception) {
-				$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeAuthor", $exception->getMessage() );
+				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage() );
 				return false;
 			}
     	} else {
@@ -246,12 +251,13 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 								'description'=> $term_description,
 								'slug' => $term_slug
 							]);
+			var_dump($term_data);
 			add_term_meta($term_data['term_id'],'author_geslib_id', $geslib_id);
     	}
         // Check for errors
         if ( is_wp_error($term_data) ) {
             // Handle the error here
-			$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeAuthor", $term_data->get_error_message() );
+			$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $term_data->get_error_message(), 'geslib' );
 			return false;
         }
 		return get_term($term_data['term_id'], 'autors');
@@ -282,13 +288,13 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 					'description' => $term_description,
 				]);
 				if (is_wp_error($term_data)) {
-					$this->BiblioApi->debug_log("Geslib Taxonomy Manager store Coleccion", $term_data->get_error_message() );
+					$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $term_data->get_error_message(), 'geslib' );
 					return false;
 				}
 				$term_meta = update_term_meta($term_data['term_id'], 'author_geslib_id', $geslib_id);
                 return true;
 			} catch (\Exception $exception) {
-				$this->BiblioApi->debug_log("Geslib Taxonomy Manager store Coleccion", $exception->getMessage() );
+				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'geslib' );
 				return false;
 			}
     	} else {
@@ -303,13 +309,13 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 								]);
 				if ( is_wp_error($term_data) ) {
 					// Handle the error here
-					$this->BiblioApi->debug_log("Geslib Taxonomy Manager store Coleccion", $term_data->get_error_message() );
+					$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $term_data->get_error_message(), 'geslib' );
 					return false;
 				}
 				add_term_meta($term_data['term_id'],'coleccion_geslib_id', $geslib_id);
 				return true;
 			} catch(Exception $exception) {
-				$this->BiblioApi->debug_log("Geslib Taxonomy Manager store Coleccion", $exception->getMessage() );
+				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'geslib' );
 				return false;
 			}
     	}
@@ -350,14 +356,14 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 			// Check for errors
 			if (is_wp_error($result)) {
 				// Handle error here
-				$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeProductCategory", $result->get_error_message() );
+				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $result->get_error_message(), 'geslib' );
 				return false;
 			}
 
 			// Return the created category
 			return get_term($result['term_id'], 'product_cat');
 		} else {
-			$this->BiblioApi->debug_log("Geslib Taxonomy Manager storeProductCategory", "Category already exists" );
+			$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Category already exists", 'geslib' );
 			return false;
 		}
 	}
@@ -384,7 +390,7 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 
 			// Extract the parent category's geslib_id
 			$parent_category_geslib_id = substr($category_geslib_id, 0, -2);
-			$this->BiblioApi->debug_log('Taxonomy Manager  - reorganizeProductCategories','category_geslib_id: '.$category_geslib_id.' - parent_category_geslib_id: '.$parent_category_geslib_id);
+			$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__,'category_geslib_id: '.$category_geslib_id.' - parent_category_geslib_id: '.$parent_category_geslib_id, 'geslib');
 			// Find the parent term based on category_geslib_id
 			if ( $parent_category_geslib_id != '' ) {
 				$args = [
@@ -408,7 +414,7 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 						}
 					}
 				} else {
-					$this->BiblioApi->debug_log('Taxonomy Manager  - reorganizeProductCategories','No parent terms found');
+					$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__,'No parent terms found', 'geslib');
 					continue;
 				}
 			}
@@ -416,7 +422,6 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 	}
 
 	public function removeUncategorizedCategory() {
-		$geslibApi = new GeslibApi();
 		// Get all products
 		$args = array(
 			'post_type' => 'product',
@@ -426,7 +431,7 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 
 		// Loop for each product
 		$products = get_posts($args);
-		$geslibApi->biblio_debug_log('INFO : GeslibApi removeUncategorizedCategory', "We are going to remove Uncategorized category from products. TOTAL: ".count($products));
+		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "We are going to remove Uncategorized category from products. TOTAL: ".count($products), 'geslib');
 		foreach ($products as $product) {
 			// Get all product categories
 			$categories = get_the_terms($product, 'product_cat');			
@@ -438,9 +443,9 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 				if ($category->name === 'Uncategorized') {
 					try {
 						wp_remove_object_terms($product, $category->term_id, 'product_cat');
-						$geslibApi->biblio_debug_log('INFO : GeslibApi removeUncategorizedCategory', "We removed Uncategorized category from product $product");
+						$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "We removed Uncategorized category from product $product", 'geslib');
 					} catch (Exception $e) {
-						$geslibApi->biblio_debug_log('ERROR : GeslibApi removeUncategorizedCategory', "We could not remove Uncategorized category from product $product");
+						$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "We could not remove Uncategorized category from product $product", 'geslib');
 					}
 				}
 			}

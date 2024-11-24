@@ -36,7 +36,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 						['%s', '%s', '%s', '%s', '%d']);
 			return true;
 		} catch (\Exception $e) {
-			$this->biblioApi->debug_log('insertLogData', "This file has not been properly inserted into the database due to an error: ".$e->getMessage());
+			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "This file has not been properly inserted into the database due to an error: ".$e->getMessage(), 'geslib');
 			return false;
 		}
 	}
@@ -62,7 +62,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 		try {
 			return (bool) $wpdb->get_var($query) > 0;
 		} catch(\Exception $e) {
-			$this->biblioApi->debug_log('isFilenameExists', "This file has not been found into the database due to an error: ".$e->getMessage());
+			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "This file has not been found into the database due to an error: ".$e->getMessage(), 'geslib');
 			return false;
 		}
 
@@ -86,7 +86,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 		try {
         	return (string) $wpdb->get_var($query);
 		} catch(\Exception $e) {
-			$this->biblioApi->debug_log('getLogQueuedFile', "This file has not been found into the database due to an error: ".$e->getMessage());
+			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "This file has not been found into the database due to an error: ".$e->getMessage(), 'geslib');
 			return false;
 		}
 	}
@@ -117,7 +117,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 		try {
 			return (int) $wpdb->get_var($query);
 		} catch(\Exception $e) {
-			$this->biblioApi->debug_log('getGeslibLoggedId', "This file has not been found into the database due to an error: ".$e->getMessage());
+			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "This file has not been found into the database due to an error: ".$e->getMessage(), 'geslib');
 			return false;
 		}
 	}
@@ -142,7 +142,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 			return (string) $wpdb->get_var($query);
 		}
 		catch(\Exception $e) {
-			$this->biblioApi->debug_log('getGeslibLoggedFilename', "This file has not been found into the database due to an error: ".$e->getMessage());
+			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "This file has not been found into the database due to an error: ".$e->getMessage(), 'geslib');
 			return false;
 		}
 
@@ -173,7 +173,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 		try {
 			return (bool) $wpdb->get_var( $sql ) > 0;
 		} catch(\Exception $e) {
-			$this->biblioApi->debug_log('checkLoggedStatus', "This file has not been found into the database due to an error: ".$e->getMessage());
+			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "This file has not been found into the database due to an error: ".$e->getMessage(), 'geslib');
 			return false;
 		}
 	}
@@ -195,7 +195,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 		try {
 			return (string) ($wpdb->get_var($sql) == null) ? false : $wpdb->get_var($sql);
 		} catch(\Exception $e) {
-			$this->biblioApi->debug_log('getLogQueuedFilename', "This file has not been found into the database due to an error: ".$e->getMessage());
+			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "This file has not been found into the database due to an error: ".$e->getMessage(), 'geslib');
 			return false;
 		}
 	}
@@ -219,7 +219,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 			$wpdb->query($sql);
 			return true;
 		} catch (\Exception $exception) {
-			$this->biblioApi->debug_log('setLogTableToLogged', $exception->getMessage());
+			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'geslib');
 			return false;
 		}
 	}
@@ -242,7 +242,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 								WHERE status = %s", $status);
 			return (int) $wpdb->get_var( $query );
 		} catch(\Exception $exception) {
-			$this->biblioApi->debug_log('countGeslibLogStatus', $exception->getMessage());
+			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'geslib');
 			return false;
 		}
 	}
@@ -262,7 +262,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 			return (int) $wpdb->get_var( "SELECT COUNT(id)
 								FROM {$table_name}");
 		} catch(\Exception $exception) {
-			$this->biblioApi->debug_log('countGeslibLog', $exception->getMessage());
+			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'geslib');
 			return false;
 		}
 
@@ -282,7 +282,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 			return (array) $wpdb->get_results( "SELECT filename, status
 											FROM {$table_name}");
 		} catch (\Exception $exception) {
-			$this->biblioApi->debug_log('fetchLoggedFilesFromDb', $exception->getMessage());
+			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'geslib');
 			return false;
 		}
 
@@ -304,18 +304,16 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 			$wpdb->query( 'SET FOREIGN_KEY_CHECKS=0;' );
 			$wpdb->query( 'TRUNCATE TABLE ' . $wpdb->prefix . self::GESLIB_LOG_TABLE );
 			$wpdb->query( 'SET FOREIGN_KEY_CHECKS=1;' );
-			if ( defined( 'SAVEQUERIES' ) && SAVEQUERIES ) {
-				global $wpdb;
-				if ( ! empty( $wpdb->queries ) ) {
-					foreach ( $wpdb->queries as $query ) {
-						// Log each query to the debug log
-						error_log( "[Biblio - Geslib DB Log Manager] ".$query[0] );
-					}
+			global $wpdb;
+			if ( ! empty( $wpdb->queries ) ) {
+				foreach ( $wpdb->queries as $query ) {
+					// Log each query to the debug log
+					$this->biblioApi->debug_log( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, $query[0] );
 				}
 			}
 			return true;
 		} catch( \Exception $exception ) {
-			$this->biblioApi->debug_log('truncateGeslibLogs', 'Unable to truncate geslib_lines table' .$exception->getMessage());
+			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Unable to truncate geslib_lines table' .$exception->getMessage(), 'geslib');
 			return false;
 		}
 	}
@@ -347,7 +345,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 			$wpdb->update( $table_name, $data, $where, $format, $where_format);
 			return true;
 		} catch( \Exception $exception ) {
-			$this->biblioApi->debug_log('setLogStatus', 'Unable to update the row'.$exception->getMessage());
+			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Unable to update the row'.$exception->getMessage(), 'geslib');
 			return false;
 		}
 	}
@@ -366,7 +364,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 										WHERE status = %s",'queued' );
 			return (int) $wpdb->get_var($query);
 		} catch ( \Exception $exception) {
-			$this->biblioApi->debug_log('getQueuedLogId', 'ERROR on getQueuedLogId: '. $exception->getMessage());
+			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'ERROR on getQueuedLogId: '. $exception->getMessage(), 'geslib');
 			return false;
 		}
 
@@ -396,7 +394,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
         try {
 			return !is_null( $wpdb->get_var( $query ) );
 		} catch( \Exception $exception ) {
-			$this->biblioApi->debug_log('isQueued', 'Unable to check if there are any queued items'.$exception->getMessage());
+			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Unable to check if there are any queued items'.$exception->getMessage(), 'geslib');
 			return false;
 		}
     }

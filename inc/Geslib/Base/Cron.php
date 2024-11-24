@@ -5,7 +5,7 @@
  */
 namespace Inc\Geslib\Base;
 
-use Inc\Geslib\Api\GeslibApi;
+use Inc\Biblio\Api\BiblioApi;
 use Inc\Geslib\Api\GeslibApiDbLinesManager;
 use Inc\Geslib\Api\GeslibApiDbLogManager;
 use Inc\Geslib\Api\GeslibApiDbManager;
@@ -35,7 +35,6 @@ class Cron extends BaseController {
      * @return void
      */
     function geslib_cron_function() {
-        $geslibApi = new GeslibApi();
         $geslibApiReadFiles = new GeslibApiReadFiles();
         $geslibApiLines = new GeslibApiLines();
         $geslibApiDbManager = new GeslibApiDbManager();
@@ -44,52 +43,52 @@ class Cron extends BaseController {
         $geslibApiDbProductsManager = new GeslibApiDbProductsManager;
         $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
         $geslibApiStoreData = new GeslibApiStoreData;
+        $biblioApi = new BiblioApi;
+        $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'COMIENZA EL CRON', 'geslib');
         $geslibApiReadFiles->readFolder();
         // Purge queues
         // Former calls to the cron may have stopped for some reason, before opening the next file.
         // Make sure the queues are processed before starting parsing more files.
-        $queuetypes = ['store_lines', 'build_content', 'store_products', 'store_autors', 'store_categories', 'store_editorials', 'store_colecciones'];
+        $queuetypes = [
+            'store_lines',
+            'build_content',
+            'store_products',
+            'store_autors',
+            'store_categories',
+            'store_editorials',
+            'store_colecciones',
+        ];
         foreach( $queuetypes as $queuetype ) {
             $geslibApiDbQueueManager->processFromQueue( $queuetype );
-            $geslibApi->biblio_debug_log('Geslib Cron', 'Processing previous queues: '. $queuetype);
+            $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Processing previous queues: '. $queuetype, 'geslib');
         }
         while( $geslibApiDbLogManager->checkLoggedStatus() ) {
             $log_id = $geslibApiDbLogManager->getGeslibLoggedId();
-            $geslibApi->biblio_debug_log('Geslib Cron', 'New process: '. $log_id);
+            $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'New process: '. $log_id, 'geslib', 'geslib');
             if ( !$geslibApiDbLogManager->isQueued() ){
                 $geslibApiDbLogManager->setLogStatus( $log_id, 'queued' );
-                $geslibApi->biblio_debug_log('Geslib Cron', 'Set log id: '. $log_id . ' to queued.');
+                $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Set log id: '. $log_id . ' to queued.', 'geslib');
             } else {
                 $geslibApiDbQueueManager->deleteItemsFromQueue( 'store_lines' );
-                $geslibApi->biblio_debug_log('Geslib Cron', 'Remove Store Lines');
+                $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Delete items from queue: store_lines', 'geslib');
             }
             $geslibApiLines->storeToLines($log_id);
-            $geslibApi->biblio_debug_log('Geslib Cron', 'Store to lines');
-            $geslibApiDbQueueManager->processFromQueue('store_lines');
-            $geslibApi->biblio_debug_log('Geslib Cron', 'Store lines');
-            $geslibApiDbQueueManager->processFromQueue('build_content');
-            $geslibApi->biblio_debug_log('Geslib Cron', 'Build Content');
-            $geslibApiDbQueueManager->processFromQueue( 'store_colecciones' );
-            $geslibApi->biblio_debug_log('Geslib Cron', 'Store Colecciones');
-            $geslibApiDbQueueManager->processFromQueue( 'store_editorials' );
-            $geslibApi->biblio_debug_log('Geslib Cron', 'Store editorials');
-            $geslibApiDbQueueManager->processFromQueue( 'store_autors' );
-            $geslibApi->biblio_debug_log('Geslib Cron', 'Store autors');
-            $geslibApiDbQueueManager->processFromQueue( 'store_categories' );
-            $geslibApi->biblio_debug_log('Geslib Cron', 'Store categories');
-            $geslibApiDbQueueManager->processFromQueue( 'store_products' );
-            $geslibApi->biblio_debug_log('Geslib Cron', 'Store products');
+            $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Store to lines', 'geslib');
+            foreach( $queuetypes as $queuetype ) {
+                $geslibApiDbQueueManager->processFromQueue( $queuetype );
+                $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Processing previous queues: '. $queuetype, 'geslib');
+            }
             $geslibApiDbLinesManager->truncateGeslibLines();
-            $geslibApi->biblio_debug_log('Geslib Cron', 'Truncate Geslib Lines');
+            $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Truncate Geslib Lines', 'geslib');
             $geslibApiDbLogManager->setLogStatus( $log_id, 'processed');
-            $geslibApi->biblio_debug_log('Geslib Cron', 'Set to processed');
+            $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Set log id: '. $log_id . ' to processed.', 'geslib');
         }
     }
 
     function geslib_remove_uncategorized_cron_function() {
         $geslibApiDbTaxonomyManager = new GeslibApiDbTaxonomyManager;
-        $geslibApi = new GeslibApi();
-        $geslibApi->biblio_debug_log('Geslib Uncategorized Cron', 'Start process');
+        $biblioApi = new BiblioApi();
+        $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Start process', 'geslib');
         $geslibApiDbTaxonomyManager->removeUncategorizedCategory();
     }
     

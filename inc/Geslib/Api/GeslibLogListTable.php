@@ -1,10 +1,12 @@
 <?php
 namespace Inc\Geslib\Api;
 
+use Inc\Biblio\Api\BiblioApi;
 use WP_List_Table;
 use Inc\Geslib\Api\GeslibApiDbManager;
 
 class GeslibLogListTable extends WP_List_Table {
+    private $biblioApi;
 
     public function __construct() {
         parent::__construct([
@@ -12,6 +14,7 @@ class GeslibLogListTable extends WP_List_Table {
             'plural'   => 'geslib_logs', // Plural label of the table
             'ajax'     => true             // Does this table support ajax?
         ]);
+        $this->biblioApi = new BiblioApi;
 
     }
     public function prepare_items() {
@@ -174,7 +177,7 @@ class GeslibLogListTable extends WP_List_Table {
                         [ 'status' => 'logged' ],
                         [ 'id' => $log_id ]);
         } catch (\Exception $exception) {
-            error_log("[BIBLIO - Geslib Log Update to logged: ".$exception->getMessage());
+            $this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__,'update_log', $exception->getMessage(), 'geslib');
         }
     }
 
@@ -185,7 +188,7 @@ class GeslibLogListTable extends WP_List_Table {
                         [ 'status' => 'processed' ],
                         [ 'id' => $log_id ]);
         } catch (\Exception $exception) {
-            error_log("[BIBLIO - Geslib Log Update to processed: ".$exception->getMessage());
+            $this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'geslib');
         }
     }
 

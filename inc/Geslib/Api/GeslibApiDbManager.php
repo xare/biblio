@@ -102,7 +102,7 @@ class GeslibApiDbManager {
 				wp_delete_term($term->ID, $taxonomy_name);
 				return true;
 			} catch (Exception $e) {
-				$this->biblioApi->debug_log('Geslib DB Manager','function deleteTerm : '. $e->getMessage());
+				$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,'function deleteTerm : '. $e->getMessage(), 'geslib');
 				return false;
 			}
 		}

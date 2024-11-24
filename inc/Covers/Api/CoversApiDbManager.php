@@ -4,6 +4,7 @@ namespace Inc\Covers\Api;
 
 require_once(ABSPATH . 'wp-admin/includes/image.php');
 
+use Inc\Biblio\Api\BiblioApi;
 use WP_Query;
 
 class CoversApiDbManager {
@@ -31,7 +32,11 @@ class CoversApiDbManager {
         'type', // int
     ];
     
+    private $biblioApi;
 
+    public function __construct() {
+        $this->biblioApi = new BiblioApi;
+    }
 
     public function getProductsWithoutCover(): array {
         global $wpdb;
@@ -67,14 +72,14 @@ class CoversApiDbManager {
     public function attachFile( string $filepath, mixed $data, string $filename ): mixed {
         // Validate data before proceeding
         if ( empty( $data ) ) {
-            error_log( "[BIBLIO - Covers Api] Data is empty. Skipping file creation.");
+            $this->biblioApi->debug_log( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Data is empty. Skipping file creation." , 'covers');
             return false;
         }
         try {
             file_put_contents( $filepath, $data );
-            error_log('[BIBLIO - Covers Api] FILE SUCCES FULLY STORED IN THE SYSTEM at' . $filepath);
+            $this->biblioApi->debug_log( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "File created successfully.".$filepath , 'covers');
         } catch ( \Exception $exception ) {
-            error_log('[BIBLIO - Covers Api] Could not create file: ' . $exception->getMessage() );
+            $this->biblioApi->debug_log( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Could not create file.". $exception->getMessage() , 'covers');
             return false;
         }
 		return $this->insertAttachment( $filename, $filepath );
@@ -177,7 +182,7 @@ class CoversApiDbManager {
                     update_post_meta($product_id, 'covers_url', $url);
                     return true;
                 } catch (\Exception $e) {
-                    error_log('[BIBLIO - Covers Api] Failed to update the covers_url custom field: '.$e->getMessage());
+                    $this->biblioApi->debug_log( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Failed to update the covers_url custom field: ".$e->getMessage() , 'covers');
                     return false;
                 }
             }
@@ -224,8 +229,8 @@ class CoversApiDbManager {
             wp_update_attachment_metadata( $attachment_id, $attachment_metadata );
             return $attachment_id ;
         } catch(\Exception $exception) {
-            error_log( "[BIBLIO - Covers Api] Exception: ".$exception->getMessage() );
-            return 0;
+            $this->biblioApi->debug_log( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Failed to insert attachment: ".$exception->getMessage() , 'covers');
+            return false;
         }
     }
 

@@ -5,6 +5,7 @@
  */
 namespace Inc\Covers\Base;
 
+use Inc\Biblio\Api\BiblioApi;
 use Inc\Covers\Api\CoversApi;
 use Inc\Covers\Api\CoversApiDbManager;
 use Inc\Covers\Api\CoversApiDbLogManager;
@@ -42,32 +43,31 @@ class Cron extends BaseController {
         $batch_size = 100;
         $coversApi = new CoversApi;
         $coversApiDbLogManager = new CoversApiDbLogManager;
-        error_log('[BIBLIO - Covers Cron] Start Cron '. date('Y-m-d') );
+        $biblioApi = new BiblioApi;
+        
 
         $log_id = (int) $coversApiDbLogManager->insertLogData('logged');
+        $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Start Cron Log ID:' . $log_id, 'covers');
         do {
             $offset = (int) get_option( 'last_processed_offset', 0 );
             $response = (string) $coversApi->scanProducts($log_id, $batch_size, $offset );
             $response = (array) json_decode($response, true);
-            error_log("[BIBLIO - Covers Cron] ".var_export($response, true));
             update_option( 'last_processed_offset', $offset + $batch_size );
             if( $response['hasMore'] == false ) {
                 update_option( 'last_processed_offset', 0 );
             }
         } while( $response['hasMore'] == true );
-        error_log('[BIBLIO - Covers Cron] End Dilve Cron '. var_export($response,true) );
-
+        $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'End Dilve Cron Log ID:' . $log_id, 'covers');
         do {
             $offset = (int) get_option( 'last_processed_offset', 0 );
             $response = (string) $coversApi->scanProducts($log_id, $batch_size, $offset, 'cegal' );
             $response = (array) json_decode($response, true);
-            error_log("[BIBLIO - Covers Cron] ".var_export($response, true));
             update_option( 'last_processed_offset', $offset + $batch_size );
             if( $response['hasMore'] == false ) {
                 update_option( 'last_processed_offset', 0 );
             }
         } while( $response['hasMore'] == true );
-        error_log('[BIBLIO - Covers Cron] End Cegal Cron '. var_export($response,true) );
+        $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'End Cegal Cron Log ID:' . $log_id, 'covers');
     }
 
 }

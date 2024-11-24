@@ -33,7 +33,7 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
         	$wpdb->delete( $wpdb->prefix.self::GESLIB_QUEUES_TABLE, ['type' => 'store_lines'], ['%s'] );
 			return true;
 		} catch( \Exception $exception ) {
-            $this->biblioApi->debug_log('truncateGeslibLines', $exception->getMessage());
+            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__ , $exception->getMessage(), 'geslib');
 			return false;
 		}
 	}
@@ -62,7 +62,7 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
 			);
 			return true;
 		} catch( \Exception $exception ) {
-            $this->biblioApi->debug_log('updateGeslibLines', $exception->getMessage());
+            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'geslib');
 			return false;
 		}
 	}
@@ -92,7 +92,7 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
 			);
             return true;
 		} catch (\Exception $e) {
-            $this->biblioApi->debug_log('insertData', "The $entity data was NOT successfully inserted to geslib lines ".$e->getMessage());
+            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "The $entity data was NOT successfully inserted to geslib lines ".$e->getMessage(), 'geslib');
             return false;
 		}
 	}
@@ -141,7 +141,7 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
             return $results;
         } catch (\Exception $exception) {
             // Log the error to WordPress debug log.
-            $this->biblioApi->debug_log('Function getAuthorsFromGeslibLines', 'Function getAuthorsFromGeslibLines: ' .$exception->getMessage());
+            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Function getAuthorsFromGeslibLines: ' .$exception->getMessage(), 'geslib');
             return false;
         }
     }
@@ -167,7 +167,7 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
             return $results;
         } catch (\Exception $exception) {
             // Log the error to WordPress debug log.
-            $this->biblioApi->debug_log('Function getEditorialsFromGeslibLines', 'Function getEditorialsFromGeslibLines: ' .$exception->getMessage());
+            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Function getEditorialsFromGeslibLines: ' .$exception->getMessage(), 'geslib');
             return false;
         }
     }
@@ -193,7 +193,7 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
             return $results;
         } catch (\Exception $exception) {
             // Log the error to WordPress debug log.
-            $this->biblioApi->debug_log('Function getColeccionesFromGeslibLines','Function getColeccionesFromGeslibLines: ' . $exception->getMessage());
+            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,'Function getColeccionesFromGeslibLines: ' . $exception->getMessage(), 'geslib');
             return false;
         }
     }
@@ -219,7 +219,7 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
             return $wpdb->get_results($prepared_query, ARRAY_A);
         } catch (\Exception $exception) {
             // Log the error to WordPress debug log.
-            $this->biblioApi->debug_log('Function getCategoriesFromGeslibLines', 'Function getCategoriesFromGeslibLines: ' . $exception->getMessage());
+            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Function getCategoriesFromGeslibLines: ' . $exception->getMessage(), 'geslib');
             return false;
         }
     }

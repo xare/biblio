@@ -2,8 +2,15 @@
 
 namespace Inc\Covers\Api;
 
+use Inc\Biblio\Api\BiblioApi;
+
 class CoversApiDbLinesManager extends CoversApiDbManager {
 
+    private $biblioApi;
+
+    public function __construct() {
+        $this->biblioApi = new BiblioApi;
+    }
     public function insertLinesData(
                         int $log_id,
                         string $isbn,
@@ -43,9 +50,8 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
 						['%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s']);
                 return $wpdb->insert_id;
             }
-
 		} catch (\Exception $e) {
-            error_log('[BIBLIO - Covers Api] This line has not been properly inserted into the database due to an error: '.$e->getMessage());
+            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "This line has not been properly inserted into the database due to an error: ".$e->getMessage(), 'covers');
             return false;
         }
 	}
@@ -70,7 +76,7 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
             $wpdb->update( $table_name, $data, $where, $format, $where_format);
             return true;
         } catch( \Exception $exception ) {
-            wp_error('Unable to update the row.'.$exception->getMessage());
+            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Unable to update the row.'.$exception->getMessage(), 'covers');
             return false;
         }
     }
@@ -95,7 +101,7 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
             $wpdb->update( $table_name, $data, $where, $format, $where_format);
             return true;
         } catch( \Exception $exception ) {
-            wp_error('Unable to update the row. '.$exception->getMessage());
+            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'covers');
             return false;
         }
     }
@@ -120,7 +126,7 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
             $wpdb->update( $table_name, $data, $where, $format, $where_format);
             return true;
         } catch( \Exception $exception ) {
-            wp_error('Unable to update the row. '.$exception->getMessage());
+            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'covers');
             return false;
         }
     }

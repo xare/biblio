@@ -2,7 +2,15 @@
 
 namespace Inc\Covers\Api;
 
+use Inc\Biblio\Api\BiblioApi;
+
 class CoversApiDbLogManager extends CoversApiDbManager {
+
+	private $biblioApi;
+
+    public function __construct() {
+        $this->biblioApi = new BiblioApi;
+    }
     /**
 	 * insertLogData
 	 *
@@ -28,7 +36,7 @@ class CoversApiDbLogManager extends CoversApiDbManager {
 						['%s', '%s', '%s', '%d', '%d']);
             return $wpdb->insert_id;
 		} catch (\Exception $e) {
-			error_log("[BIBLIO - Covers Api] This line has not been properly inserted into the database due to an error: ".$e->getMessage());
+			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "This line has not been properly inserted into the database due to an error: ".$e->getMessage(), 'covers');
             return false;
         }
 	}
@@ -54,7 +62,7 @@ class CoversApiDbLogManager extends CoversApiDbManager {
 			$wpdb->update( $table_name, $data, $where, $format, $where_format);
 			return true;
 		} catch( \Exception $exception ) {
-			error_log('[BIBLIO - Covers Api] Unable to update the row.'.$exception->getMessage());
+			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Unable to update the row.'.$exception->getMessage(), 'covers');
 			return false;
 		}
 	}
@@ -76,12 +84,11 @@ class CoversApiDbLogManager extends CoversApiDbManager {
 		$where_format = ['%d']; // integer format
 		try {
 			$wpdb->update( $table_name, $data, $where, $format, $where_format);
-			error_log('[BIBLIO - Covers Api] We updated the covers_log table with '.$processed_items.' scanned products.');
+			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'We updated the covers_log table with '.$processed_items.' scanned products.', 'covers');
 			return true;
 		} catch( \Exception $exception ) {
-			error_log('[BIBLIO - Covers Api] Unable to update the row. '.$exception->getMessage());
+			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Unable to update the row. '.$exception->getMessage(), 'covers');
 			return false;
 		}
 	}
-
 }

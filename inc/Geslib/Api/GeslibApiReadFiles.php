@@ -2,6 +2,7 @@
 
 namespace Inc\Geslib\Api;
 
+use Inc\Biblio\Api\BiblioApi;
 use Inc\Geslib\Api\GeslibApiDbManager;
 use ZipArchive;
 
@@ -11,7 +12,7 @@ class GeslibApiReadFiles {
 	private string $mainFolderPath;
     private string $histoFolderPath;
 	private array $geslibSettings;
-
+	private $biblioApi;
 	/**
      * __construct
      * - Cast the configuration to an array.
@@ -25,6 +26,7 @@ class GeslibApiReadFiles {
 		$this->geslibSettings = get_option('geslib_settings');
         $this->mainFolderPath = (string) WP_CONTENT_DIR . '/uploads/' . $this->geslibSettings['geslib_folder_index'].'/';
         $this->histoFolderPath = (string) $this->mainFolderPath . 'HISTO/';
+		$this->biblioApi = new BiblioApi;
     }
 
 	/**
@@ -69,7 +71,7 @@ class GeslibApiReadFiles {
 					try {
 						(bool) rename($file, $newLocation);
 					} catch(\Exception $exception) {
-						echo "Error while copying the file to zip folder: ".$exception->getMessage();
+						$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Error while renaming the file: ".$exception->getMessage(), 'geslib');
 					}
 				}
 			}
@@ -115,7 +117,7 @@ class GeslibApiReadFiles {
 				return (string) $extractedFilename;
 			} else {
 				// Handle error
-				error_log('[BIBLIO - Geslib GeslibReadFiles::unzipFile] Could not open the ZIP file.');
+				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Could not open the ZIP file.', 'geslib');
 			}
 		}
 		return false;

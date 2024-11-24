@@ -175,6 +175,7 @@ class GeslibApiLines {
 	private $geslibSettings;
 	private $geslibApiSanitize;
 	private $biblioApi;
+	
 	public function __construct() {
 		$this->geslibSettings = get_option('geslib_settings');
 		$this->mainFolderPath = WP_CONTENT_DIR . "/uploads/".$this->geslibSettings['geslib_folder_index']."/";
@@ -191,7 +192,6 @@ class GeslibApiLines {
 	 * @return int
 	 */
 	public function storeToLines(int $log_id): int{
-		$geslibApi = new GeslibApi();
 		$geslibApiDbLogManager = new GeslibApiDbLogManager;
 		$geslibApiDbQueueManager = new GeslibApiDbQueueManager;
 		$geslibApiDbProductsManager = new GeslibApiDbProductsManager;
@@ -210,7 +210,7 @@ class GeslibApiLines {
 		$batch_size = 300; // Choose a reasonable batch size
 		$batch = [];
 		$i = 0;
-		$geslibApi->biblio_debug_log('Geslib GeslibApiLines::storeToLines count lines', count( $lines ) );
+		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, count( $lines ) .' lines', 'geslib');
 		foreach ($lines as $line) {
 			$line = $this->sanitizeLine( $line );
 			$line_array = explode('|', $line);
@@ -223,7 +223,6 @@ class GeslibApiLines {
 				&& !$geslibApiDbProductsManager->check_product_stock_by_geslib_id($line_array[1], $line_array[2]))) {
 				continue;
 			}
-			$geslibApi->biblio_debug_log('Geslib GeslibApiLines::storeToLines Loop INDEX:', $i );
 			$index = ( in_array( $line_array[0],['6E', '6TE', 'AUTBIO', 'B','LA'] ) ) ? 1 : 2;
 			$entity = match ( $line_array[0] ) {
 				'1L' => 'editorials',
@@ -243,27 +242,22 @@ class GeslibApiLines {
 				default => 'adjuntar',
 			};
 			$item = [
-				'data' => $line,
 				'log_id' => $log_id,
 				'geslib_id' => $line_array[$index],
 				'type' => 'store_lines',  // type to identify the task in processQueue
 				'entity' => $entity,
 				'action' => $action,
+				'data' => $line,
 			];
-			$geslibApi->biblio_debug_log('Geslib GeslibApiLines::storeToLines', var_export( $item, true ) );
 			$batch[] = $item;
-			$geslibApi->biblio_debug_log('Geslib GeslibApiLines::storeToLines Count inside loop BATCH', count( $batch ));
 			if (count($batch) >= $batch_size) {
 				$geslibApiDbQueueManager->insertLinesIntoQueue( $batch );
 				$batch = [];
 			}
 			$i++;
 		}
-		$geslibApi->biblio_debug_log('Geslib GeslibApiLines::storeToLines Count outside loop count(batch)', 'outside' );
-		$geslibApi->biblio_debug_log('Geslib GeslibApiLines::storeToLines Count outside loop count(batch)', count($batch) );
 		// Don't forget the last batch
 		if ( !empty( $batch ) ) {
-			$geslibApi->biblio_debug_log('Geslib GeslibApiLines::storeToLines', var_export( $batch, true ) );
 			$geslibApiDbQueueManager->insertLinesIntoQueue( $batch );
 		}
 
@@ -298,7 +292,6 @@ class GeslibApiLines {
 	public function readLine( string $line, int $log_id ) :void {
 		$geslibApiDbQueueManager = new GeslibApiDbQueueManager();
 		$data = explode( '|', $line ) ;
-		//error_log($line);
 		array_pop($data);
 
 		if( in_array($data[0], self::$lineTypes ) ) {
@@ -335,16 +328,33 @@ class GeslibApiLines {
 		$geslibApiDbLinesManager->insertData( $content_array, $data[1], $log_id, 'product' );
 	}
 
+	/**
+	 * process6E
+	 * Procesa las l�neas 6E aqu�
+	 * 6E|Articulo|Contador|Texto|
+	 * 6E|1|1|Els grans mitjans ens han repetit fins a l'infinit escenes de mort i destrucci� a Gaza, per� ens han amagat la quotidianitat m�s extraordin�ria. Viure morir i n�ixer a Gaza recull un centenar de fotografies que ens mostren les meravelles que David Segarra es va trobar enmig de la trag�dia: la capacitat de viure, d'estimar, de resistir i de sobreviure malgrat l'horror.
+	 *
+	 * @param  mixed $data
+	 * @param  int $log_id
+	 * @return void
+	 */
 	private function process6E($data, int $log_id) {
-		// Procesa las líneas 6E aquí
-		// 6E|Articulo|Contador|Texto|
-		// 6E|1|1|Els grans mitjans ens han repetit fins a l'infinit escenes de mort i destrucci� a Gaza, per� ens han amagat la quotidianitat m�s extraordin�ria. Viure morir i n�ixer a Gaza recull un centenar de fotografies que ens mostren les meravelles que David Segarra es va trobar enmig de la trag�dia: la capacitat de viure, d'estimar, de resistir i de sobreviure malgrat l'horror.\n\nAcompanyant les imatges, les paraules antigues de la Mediterr�nia. Ausi�s March, Estell�s, al-Russaf�, Llach, Espriu, Aub, Ibn Arab�, Lorca, Darwix o Kavafis. Veus de les tradicions que ens han forjat com a civilitzacions. Per� tamb� peda�os de relats i hist�ries poc conegudes que l'autor va descobrir durant tres mesos de conviv�ncia en aquest tros de Palestina. Hist�ries de saviesa i dolor. Hist�ries de paci�ncia i perseveran�a. Hist�ries de p�rdua i renaixen�a. Hist�ries de la bellesa oculta de Gaza.|
 		$geslib_id = $data[1];
 		$content_array['sinopsis'] = $data[3];
 		$content_array = $this->geslibApiSanitize->sanitize_content_array( $content_array );
 		$this->mergeContent( $geslib_id, $content_array, 'product');
 	}
 
+	/**
+	 * process6TE
+	 * Procesa las líneas 6TE aquí
+	 * 6TE|Articulo|Contador|Texto|
+	 * 6TE|1|1|Els grans mitjans ens han repetit fins a l'infinit escenes de mort i destrucció a Gaza, però ens han amagat la quotidianitat més extraordinària. Viure morir i néixer a Gaza recull un centenar de fotografies que ens mostren les meravelles que David Segarra es va trobar enmig de la tragèdia: la capacitat de viure, d'estimar, de resistir i de sobreviure malgrat l'horror.
+	 *
+	 * @param  mixed $data
+	 * @param  int $log_id
+	 * @return void
+	 */
 	private function process6TE( array $data, int $log_id ) {
 		// Procesa las líneas 6TE aquí
 	}
@@ -426,7 +436,7 @@ class GeslibApiLines {
 	private function process5( $data, $log_id ) {
 		$geslib_category_id = $data[1];
 		$geslib_product_id = $data[2];
-		$this->biblioApi->debug_log('process5', 'geslib_category_id: ' . $geslib_category_id . ' geslib_product_id: ' . $geslib_product_id);
+		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'geslib_category_id: ' . $geslib_category_id . ' geslib_product_id: ' . $geslib_product_id, 'geslib');
 		$content_array = [];
 		if($geslib_category_id !== 0 && $geslib_category_id != '') {
 			$content_array['categories'][$geslib_category_id] = $geslib_product_id;
@@ -532,7 +542,7 @@ class GeslibApiLines {
 		//1. Get the content given the $geslib_id
 		$original_content = $geslibApiDbLinesManager->fetchContent( $geslib_id, $entity );
 		if ( !$original_content ) {
-			error_log("error at Merge Content");
+			$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Content not found for geslib_id: ' . $geslib_id, 'geslib');
 			return false;
 		}
 

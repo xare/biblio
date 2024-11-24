@@ -115,6 +115,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     if( !document.getElementById( "geslibLogQueueProcess")) return;
+    
     document.getElementById( "geslibLogQueueProcess" ).addEventListener( "click", async function( event ) {
         event.preventDefault();
         let button = event.target;
