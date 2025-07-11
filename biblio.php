@@ -20,6 +20,7 @@ if ( file_exists( dirname( __FILE__).'/vendor/autoload.php' ) ){
  */
 function activate_biblio(){
     Inc\Biblio\Base\Activate::activate();
+    Inc\Geslib\Base\Activate::activate();
 }
 register_activation_hook( __FILE__, 'activate_biblio');
 
@@ -43,3 +44,11 @@ register_activation_hook( __FILE__, 'activate_biblio');
  if ( class_exists( 'Inc\\Covers\\Init' ) ) {
     Inc\Covers\Init::register_services();
  }
+
+/*  add_action('admin_init', function() {
+   if (isset($_GET['run_cron_setup']) && $_GET['run_cron_setup'] == '1') {
+       $cron = new \Inc\Geslib\Base\Cron();
+       $cron->register();
+       echo "Cron jobs have been registered.";
+   }
+}); */
