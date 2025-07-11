@@ -22,6 +22,7 @@ function updateStatistics() {
                     'total-authors-queue',
                     'total-editorials-queue',
                     'total-categories-queue',
+                    'total-colecciones-queue',
                     'queued-filename',
                     'geslib-log-logged',
                     'geslib-log-queued',

@@ -67,7 +67,7 @@ class Cron extends BaseController {
         $biblioApi->debug_log('INFO ' . __CLASS__ . ':' . __LINE__ . ' ' . __FUNCTION__, 'End Dilve Cron Log ID:' . $log_id, 'covers');
         do {
             $offset = (int) get_option( 'last_processed_offset', 0 );
-             $biblioApi->debug_log('INFO ' . __CLASS__ . ': ' . __LINE__ . ' ' . __FUNCTION__ , 'offset:' . $offset, 'covers');
+            $biblioApi->debug_log('INFO ' . __CLASS__ . ': ' . __LINE__ . ' ' . __FUNCTION__ , 'offset:' . $offset, 'covers');
             $response = (string) $coversApi->scanProducts($log_id, $batch_size, $offset, 'cegal' );
             $response = (array) json_decode($response, true);
             update_option( 'last_processed_offset', $offset + $batch_size );
