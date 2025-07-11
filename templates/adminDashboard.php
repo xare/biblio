@@ -10,8 +10,8 @@
     <div id="tab-1" class="tab-pane active">
       <form method="post" action="options.php">
         <?php
-          settings_fields('starterkit_settings');
-          do_settings_sections( 'starterkit');
+          settings_fields('biblio_options_group');
+          do_settings_sections( 'biblio');
           submit_button();
         ?>
       </form>

@@ -3,7 +3,6 @@
 namespace Inc\Geslib\Base;
 
 use Inc\Geslib\Api\GeslibApiDbLinesManager;
-use Inc\Geslib\Api\GeslibApiDbLoggerManager;
 use Inc\Geslib\Api\GeslibApiDbLogManager;
 use Inc\Geslib\Api\GeslibApiDbManager;
 use Inc\Geslib\Api\GeslibApiDbProductsManager;
@@ -23,7 +22,6 @@ class GeslibUpdateValuesController extends BaseController {
         $geslibApiDbLogManager = new GeslibApiDbLogManager;
         $geslibApiDbLinesManager = new GeslibApiDbLinesManager;
         $geslibApiDbProductsManager = new GeslibApiDbProductsManager;
-        $geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
         $geslibApiReadFiles = new GeslibApiReadFiles;
         // Get data
         $data = [
@@ -40,7 +38,6 @@ class GeslibUpdateValuesController extends BaseController {
             'geslib-log-logged' => $geslibApiDbLogManager->countGeslibLogStatus('logged'),
             'geslib-log-queued' => $geslibApiDbLogManager->countGeslibLogStatus('queued'),
             'geslib-log-processed' => $geslibApiDbLogManager->countGeslibLogStatus('processed'),
-            'geslib-latest-loggers' => $geslibApiDbLoggerManager->getLatestLoggers(),
         ];
         // Send JSON response
         wp_send_json_success($data);

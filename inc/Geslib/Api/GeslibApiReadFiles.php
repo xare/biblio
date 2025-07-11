@@ -2,8 +2,8 @@
 
 namespace Inc\Geslib\Api;
 
+use Inc\Biblio\Api\BiblioApi;
 use Inc\Geslib\Api\GeslibApiDbManager;
-use Inc\Geslib\Api\GeslibApiDbLoggerManager;
 use ZipArchive;
 
 // This file contains all the functions necessary to read the contents in the geslib folder and store them to the logs table
@@ -12,8 +12,7 @@ class GeslibApiReadFiles {
 	private string $mainFolderPath;
     private string $histoFolderPath;
 	private array $geslibSettings;
-    private $db;
-
+	private $biblioApi;
 	/**
      * __construct
      * - Cast the configuration to an array.
@@ -27,7 +26,7 @@ class GeslibApiReadFiles {
 		$this->geslibSettings = get_option('geslib_settings');
         $this->mainFolderPath = (string) WP_CONTENT_DIR . '/uploads/' . $this->geslibSettings['geslib_folder_index'].'/';
         $this->histoFolderPath = (string) $this->mainFolderPath . 'HISTO/';
-        $this->db = new GeslibApiDbManager();
+		$this->biblioApi = new BiblioApi;
     }
 
 	/**
@@ -43,9 +42,9 @@ class GeslibApiReadFiles {
 	 * - GeslibProcessAllCommand.php
 	 * - GeslibStoreProductsCommand.php
 	 *
-	 * @return mixed
+	 * @return array
 	 */
-	public function readFolder(): mixed {
+	public function readFolder(): array {
 		$files = (array) glob( $this->mainFolderPath . 'INTER*' );
 		$zipFolder = (string) $this->mainFolderPath . 'zip/';
 		// Check if the zip folder exists, if not create it
@@ -72,14 +71,14 @@ class GeslibApiReadFiles {
 					try {
 						(bool) rename($file, $newLocation);
 					} catch(\Exception $exception) {
-						echo "Error while copying the file to zip folder: ".$exception->getMessage();
+						$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Error while renaming the file: ".$exception->getMessage(), 'geslib');
 					}
 				}
 			}
 			$filenames[] = $fileInfo['filename'];
 			$this->_insert2geslibLog( $fileInfo['filename'] );
 		}
-		return $filenames;
+		return (array) $filenames;
 	}
 	/**
 	 * insert2geslibLog
@@ -118,7 +117,7 @@ class GeslibApiReadFiles {
 				return (string) $extractedFilename;
 			} else {
 				// Handle error
-				error_log('Could not open the ZIP file.');
+				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Could not open the ZIP file.', 'geslib');
 			}
 		}
 		return false;
@@ -196,7 +195,7 @@ class GeslibApiReadFiles {
 	 */
 	public function countLinesWithGP4(string $filename, string $type='product'): array|false {
 		// Check if the file exists
-		$codes  = ['GP4', '1L','3'];
+		$codes  = ['GP4', '1L','3', 'AUT'];
 		if (!file_exists($filename)) {
 			return false; // Return false if file not found
 		}
@@ -213,6 +212,9 @@ class GeslibApiReadFiles {
 			'3A' => 0,
 			'3M' => 0,
 			'3B' => 0,
+			'AUTA' => 0,
+			'AUTM' => 0,
+			'AUTB' => 0,
 		];
 		if( !is_file( $filename )) {
 			return false;
@@ -224,11 +226,9 @@ class GeslibApiReadFiles {
 			$lineArray = explode('|', $line);
 			if ( in_array($lineArray[0], $codes)) {
 				$countsArray['total']++; // Increment total GP4 lines count
-				if ( count( $lineArray ) > 1 ) {
-					if (in_array($lineArray[1], ['A', 'M', 'B'])) {
-						// i.e.: $countArray['GP4A']
-						$countsArray[$lineArray[0] . $lineArray[1]]++;
-					}
+				if (count( $lineArray ) > 1 && in_array($lineArray[1], ['A', 'M', 'B'])) {
+					// i.e.: $countArray['GP4A']
+					$countsArray[$lineArray[0] . $lineArray[1]]++;
 				}
 			}
 		}

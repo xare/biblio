@@ -2,8 +2,7 @@
 
 namespace Inc\Geslib\Api;
 
-use Inc\Geslib\Api\GeslibApiDbManager;
-use Inc\Geslib\Api\GeslibApiDbLoggerManager;
+use Inc\Geslib\Api\GeslibApiDbLogManager;
 
 
 class GeslibApiLog {

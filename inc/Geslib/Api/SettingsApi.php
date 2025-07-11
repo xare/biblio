@@ -51,6 +51,7 @@ class SettingsApi
     $this->admin_subpages = array_merge( $this->admin_subpages, $pages );
     return $this;
   }
+
   public function addAdminMenu()
   {
     foreach ( $this->admin_pages as $page ) {

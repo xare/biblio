@@ -3,8 +3,8 @@
 namespace Inc\Geslib\Api;
 
 use Exception;
+use Inc\Biblio\Api\BiblioApi;
 use Inc\Geslib\Api\GeslibApiSanitize;
-use Inc\Geslib\Api\GeslibApiDbLoggerManager;
 use WC_Product_Simple;
 use WP_Query;
 
@@ -12,7 +12,6 @@ class GeslibApiDbManager {
 	const GESLIB_LINES_TABLE = 'geslib_lines';
 	const GESLIB_LOG_TABLE = 'geslib_log';
 	const GESLIB_QUEUES_TABLE = 'geslib_queues';
-	const GESLIB_LOGGER_TABLE = 'geslib_logger';
 	static $geslibLinesKeys = [
 		'log_id', // int relation oneToMany with geslib_log
 		'geslib_id', // int
@@ -29,14 +28,12 @@ class GeslibApiDbManager {
 		'status', // string waiting | enqueued | processed
 		'lines_count', // int number of lines
 	];
-	static $geslibLoggerKeys = [
-		'log_id', // int
-		'geslib_id', // int
-		'type', // string store_lines | store_products | build_content
-		'action', // string
-		'entity', // string log | lines |
-		'metadata', // json
-	];
+
+	private $biblioApi;
+
+    public function __construct() {
+        $this->biblioApi = new BiblioApi;
+    }
 
 	/**
 	 * countRows
@@ -93,13 +90,22 @@ class GeslibApiDbManager {
 	 * @return bool
 	 */
 	public function deleteTerm( int $geslib_id, string $taxonomy_name ): bool {
-		$term = get_term_by('geslib_id', $geslib_id, $taxonomy_name);
-		try {
-			 wp_delete_term($term->ID, $taxonomy_name);
-			 return true;
-		} catch (Exception $e) {
-			error_log('function deleteTerm : '.$e->getMessage());
-			return false;
+		$taxonomy_prefix = match($taxonomy_name) {
+			'autors' => 'autor_',
+			'editorials' => 'editorial_',
+			'product_cat' => 'category_',
+			default => '',
+		};
+		$term = get_term_by($taxonomy_prefix.'geslib_id', $geslib_id, $taxonomy_name);
+		if (false !== $term) {
+			try {
+				wp_delete_term($term->ID, $taxonomy_name);
+				return true;
+			} catch (Exception $e) {
+				$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,'function deleteTerm : '. $e->getMessage(), 'geslib');
+				return false;
+			}
 		}
+		return false;
 	}
 }

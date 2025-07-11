@@ -14,7 +14,7 @@
   <div class="tab-content">
     <div id="tab-1" class="tab-pane <?php echo !isset($_POST["edit_post"]) ? 'active' : '' ?>">
     <h3>Manage Custom Post Types</h3>
-    <table class="cpt-table">
+    <table class="biblio-table">
       <tr>
         <th>ID</th>
         <th>Singular Name</th>

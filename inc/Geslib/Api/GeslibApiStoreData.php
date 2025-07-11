@@ -1,13 +1,16 @@
 <?php
 
 namespace Inc\Geslib\Api;
-use Inc\Geslib\Api\GeslibApiDbLoggerManager;
+
+use Inc\Biblio\Api\BiblioApi;
 
 class GeslibApiStoreData {
     private $db;
+    private $biblioApi;
 
     public function __construct() {
         $this->db = new GeslibApiDbManager();
+        $this->biblioApi = new BiblioApi;
     }
 
     public function storeProductCategories() {
@@ -20,14 +23,14 @@ class GeslibApiStoreData {
 		$batch = [];
         foreach($product_categories as $product_category) {
             $item = [
-                'geslib_id' => $product_category['geslib_id'],
                 'log_id' => $product_category['log_id'],
-                'data' => $product_category['content'],
+                'geslib_id' => $product_category['geslib_id'],
                 'type' => 'store_categories'  // type to identify the task in processQueue
             ];
             if( isset($product_category['content']['action'])) {
                 $item['action'] = $product_category['content']['action'];
             }
+            $item['data'] = $product_category['content'];
             $batch[] = $item;
             if ( count( $batch ) >= $batch_size ) {
                 $geslibApiDbQueueManager->insertCategoriesIntoQueue( $batch );
@@ -36,7 +39,7 @@ class GeslibApiStoreData {
         }
         // Return a status message indicating success or failure and/or count of categories added.
         $totalAdded = count($product_categories);
-        error_log("Added $totalAdded product categories to the queue.");
+        $this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Added {$totalAdded} product categories to the queue.", 'geslib' );
     }
 
 
@@ -55,14 +58,14 @@ class GeslibApiStoreData {
         foreach( $editorials as $editorial ) {
             //$geslibApiDbManager->storeEditorials( $editorial );
             $item = [
-                'geslib_id' => $editorial['geslib_id'],
                 'log_id' => $editorial['log_id'],
-                'data' => $editorial['content'],
+                'geslib_id' => $editorial['geslib_id'],
                 'type' => 'store_editorials'  // type to identify the task in processQueue
             ];
             if( isset( $editorial['content']['action'] ) ) {
                 $item['action'] = $editorial['content']['action'];
             }
+            $item['data'] = $editorial['content'];
             $batch[] = $item;
             if ( count( $batch ) >= $batch_size ) {
                 $geslibApiDbQueueManager->insertEditorialsIntoQueue( $batch );
@@ -82,20 +85,19 @@ class GeslibApiStoreData {
         $geslibApiDbLinesManager = new GeslibApiDbLinesManager;
         $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
         $geslibApiDbManager = new GeslibApiDbManager;
-        $geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
         $authors = $geslibApiDbLinesManager->getAuthorsFromGeslibLines();
         $batch_size = 3000; // Choose a reasonable batch size
 		$batch = [];
         foreach( $authors as $author ) {
             $item = [
-                'geslib_id' => $author['geslib_id'],
                 'log_id' => $author['log_id'],
-                'data' => $author['content'],
+                'geslib_id' => $author['geslib_id'],
                 'type' => 'store_autors'  // type to identify the task in processQueue
             ];
             if( isset( $author['content']['action'] ) ) {
                 $item['action'] = $author['content']['action'];
             }
+            $item['data'] = $author['content'];
             $batch[] = $item;
             if ( count( $batch ) >= $batch_size ) {
                 $geslibApiDbQueueManager->insertAuthorsIntoQueue( $batch );

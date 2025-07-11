@@ -12,7 +12,7 @@ class TaxonomyCallbacks
 
   public function taxonomySanitize( $input ){
 
-      $output = get_option('starterkit_taxonomy');
+      $output = get_option('biblio_taxonomy');
 
       if ( isset($_POST["remove"]) ) {
         unset($output[$_POST["remove"]]);

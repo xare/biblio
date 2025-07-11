@@ -25,7 +25,7 @@ class CoversApiDbLoggerManager extends CoversApiDbManager{
             );
             return true;
         } catch (\Exception $exception) {
-            error_log("Covers Logger error: " . $exception->getMessage());
+            error_log("[BIBLIO - Covers Api] Covers Logger error: " . $exception->getMessage());
             return false;
         }
     }

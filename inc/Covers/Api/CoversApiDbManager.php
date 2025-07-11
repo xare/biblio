@@ -2,12 +2,14 @@
 
 namespace Inc\Covers\Api;
 
+require_once(ABSPATH . 'wp-admin/includes/image.php');
+
+use Inc\Biblio\Api\BiblioApi;
 use WP_Query;
 
 class CoversApiDbManager {
     const COVERS_LOG_TABLE = 'covers_log';
     const COVERS_LINES_TABLE = 'covers_lines';
-    const COVERS_LOGGER_TABLE = 'covers_logger';
 
     static $coversLogKeys = [
 		'start_date', // date
@@ -27,33 +29,57 @@ class CoversApiDbManager {
         'isError', // boolean
         'error',   // string
         'attempts', // int
+        'type', // int
     ];
-    public $coversLoggerKeys = [
-        'date',
-        'ean', // int
-		'url', // int
-		'metadata', // json
-    ];
+    
+    private $biblioApi;
 
+    public function __construct() {
+        $this->biblioApi = new BiblioApi;
+    }
+
+    public function getProductsWithoutCover(): array {
+        global $wpdb;
+        // Read all products.
+		// Query for all products.
+		$batch_size = (int) (isset($_POST['batch_size']) && $_POST['batch_size'] != null) ? $_POST['batch_size'] : -1;
+		$offset = (int) (isset($_POST['offset']) && $_POST['offset'] != null) ? $_POST['offset']: 0;
+		$sql = "SELECT * FROM {$wpdb->posts}
+				WHERE ID NOT IN (
+									SELECT post_id from {$wpdb->postmeta}
+									WHERE meta_key = '_thumbnail_id'
+								)
+				AND post_type = 'product'
+				AND post_status = 'publish'"; 
+
+		if ($batch_size != -1) {
+			$sql .= " LIMIT %d, %d";
+			$query = $wpdb->prepare($sql, $offset, $batch_size);
+		} else {
+			$query = $wpdb->prepare($sql);
+		}
+		return $wpdb->get_results( $query, ARRAY_A );
+
+    }
     /**
      * insertFile
      *
      * @param  string $filepath
-     * @param  array $data
+     * @param  mixed $data
      * @param  string $filename
      * @return mixed
      */
-    public function attachFile( string $filepath, array $data, string $filename ): mixed {
+    public function attachFile( string $filepath, mixed $data, string $filename ): mixed {
         // Validate data before proceeding
         if ( empty( $data ) ) {
-            var_dump( 'Data is empty. Skipping file creation.' );
+            $this->biblioApi->debug_log( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Data is empty. Skipping file creation." , 'covers');
             return false;
         }
         try {
-            file_put_contents( $filepath, $data['data'] );
-            var_dump( 'FILE SUCCES FULLY STORED IN THE SYSTEM at' . $filepath );
+            file_put_contents( $filepath, $data );
+            $this->biblioApi->debug_log( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "File created successfully.".$filepath , 'covers');
         } catch ( \Exception $exception ) {
-            var_dump( 'Could not create file: ' . $exception->getMessage() );
+            $this->biblioApi->debug_log( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Could not create file.". $exception->getMessage() , 'covers');
             return false;
         }
 		return $this->insertAttachment( $filename, $filepath );
@@ -113,12 +139,9 @@ class CoversApiDbManager {
 				),
 			),
 		);
-
     	$products = get_posts($args);
-
 		foreach ($products as $product) {
 			$product_id = $product->ID;
-
 			// Check if a thumbnail is already set for the product
 			if (get_post_thumbnail_id($product_id)) {
 				continue; // Skip setting the featured image if already set
@@ -159,7 +182,7 @@ class CoversApiDbManager {
                     update_post_meta($product_id, 'covers_url', $url);
                     return true;
                 } catch (\Exception $e) {
-                    error_log('Failed to update the covers_url custom field: '.$e->getMessage());
+                    $this->biblioApi->debug_log( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Failed to update the covers_url custom field: ".$e->getMessage() , 'covers');
                     return false;
                 }
             }
@@ -202,14 +225,12 @@ class CoversApiDbManager {
 
         try {
             $attachment_id = wp_insert_attachment( $args, $filepath, 0 );
-
-            wp_update_attachment_metadata(
-                $attachment_id,
-                wp_generate_attachment_metadata( $attachment_id, $filepath ) );
+            $attachment_metadata = wp_generate_attachment_metadata( $attachment_id, $filepath );
+            wp_update_attachment_metadata( $attachment_id, $attachment_metadata );
             return $attachment_id ;
         } catch(\Exception $exception) {
-            error_log( "Exception: ".$exception->getMessage() );
-            return 0;
+            $this->biblioApi->debug_log( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Failed to insert attachment: ".$exception->getMessage() , 'covers');
+            return false;
         }
     }
 
@@ -227,7 +248,7 @@ class CoversApiDbManager {
 			'meta_value' => 'portadas/' . $filename,
 			'posts_per_page' => 1,
 		]);
-        //var_dump($attachments);
+
         return ( !empty( $attachments ) )? $attachments : false;
     }
 }

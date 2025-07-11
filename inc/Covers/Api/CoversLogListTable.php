@@ -6,7 +6,6 @@ use Inc\Covers\Api\CoversApiDbManager;
 
 class CoversLogListTable extends WP_List_Table {
 
-    private $coversApiDbLoggerManager;
 
     public function __construct() {
         parent::__construct([

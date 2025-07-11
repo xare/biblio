@@ -1,5 +1,5 @@
 <?php
-namespace Inc\Dilve\Api;
+namespace Inc\Covers\Api;
 
 class SettingsApi
 {

@@ -4,8 +4,9 @@
  * @package biblio
  */
 
- namespace Inc\Biblio\Base;
+namespace Inc\Biblio\Base;
 use Inc\Biblio\Base\BaseController;
+
 class Enqueue extends BaseController {
   public function register(){
     add_action ( 'admin_enqueue_scripts', [$this, 'enqueue_admin']);

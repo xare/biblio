@@ -5,16 +5,19 @@ namespace Inc\Geslib\Pages;
 use Inc\Geslib\Api\SettingsApi;
 use Inc\Geslib\Base\BaseController;
 use Inc\Geslib\Api\Callbacks\AdminCallbacks;
+use Inc\Geslib\Api\Callbacks\ManagerCallbacks;
 
 class Dashboard extends BaseController {
     public $settings;
     public $pages = [];
 	public $subpages = []; // Add this line to define subpages
     public $callbacks;
+	public $callbacks_mngr;
 
     public function register() {
         $this->settings = new SettingsApi();
         $this->callbacks = new AdminCallbacks();
+		$this->callbacks_mngr = new ManagerCallbacks();
         $this->setPages();
 		$this->setSubpages();
         $this->setSettings();
@@ -67,14 +70,6 @@ class Dashboard extends BaseController {
                 'menu_slug' => 'geslib_log', // Menu slug
                 'callback' => [$this->callbacks, 'adminLogTable'] // Callback function, define it in AdminCallbacks class
 			],
-            [
-                'parent_slug' => 'geslib', // Parent menu slug
-                'page_title' => 'Geslib Logger', // Page title
-                'menu_title' => 'Geslib Logger', // Menu title
-                'capability' => 'manage_options', // Capability
-                'menu_slug' => 'geslib_logger', // Menu slug
-                'callback' => [$this->callbacks, 'adminGeslibLogger'] // Callback function, define it in AdminCallbacks class
-			],
 			[
                 'parent_slug' => 'geslib', // Parent menu slug
                 'page_title' => 'Geslib Queues', // Page title
@@ -88,6 +83,12 @@ class Dashboard extends BaseController {
 
     public function setSettings()
 	{
+		$default_settings = [
+			'geslib_folder_index' => 'geslib'
+		];
+		/* foreach ($this->managers as $key => $label) {
+			$default_settings[$key] = 0;
+		} */
 		$args = [
 			[
 				'option_group'=> 'geslib_settings',
@@ -99,12 +100,19 @@ class Dashboard extends BaseController {
 		$this->settings->setSettings( $args );
 
 		// Save the default option if it doesn't exist
-		if ( !get_option('geslib_settings') ) {
-			$default_settings = [
-				'geslib_folder_index' => ''
-			];
-			update_option('geslib_settings', $default_settings);
+		// Ensure it's an array before merging
+		$saved_settings = get_option('geslib_settings');
+		if (!is_array($saved_settings)) {
+			$saved_settings = [];
 		}
+        
+        if (!$saved_settings) {
+            update_option('geslib_settings', $default_settings);
+        } else {
+            // Ensure all default keys exist
+            $new_settings = array_merge($default_settings, $saved_settings);
+            update_option('geslib_settings', $new_settings);
+        }
 	}
 
     public function setSections()
@@ -122,6 +130,7 @@ class Dashboard extends BaseController {
 
     public function setFields()
 	{
+		//$line_types = $this->callbacks_mngr::getLineTypes();
 		$args = [
                     [
 						'id'=> 'geslib_folder_index',
@@ -136,6 +145,20 @@ class Dashboard extends BaseController {
 							]
 		            ]
                 ];
+		/* foreach ($line_types as $key => $label) {
+			$args[] = [
+				'id' => $key,
+				'title' => '<em>['.$key.']</em> ' . $label,
+				'callback' => [$this->callbacks_mngr, 'checkboxField'],
+				'page' => 'geslib',
+				'section' => 'geslib_admin_index',
+				'args' => [
+					'option_name' => 'geslib_settings',
+					'label_for' => $key,
+					'class' => 'ui-toggle'
+				]
+			];
+		} */
 		$this->settings->setFields( $args );
 	}
 }
