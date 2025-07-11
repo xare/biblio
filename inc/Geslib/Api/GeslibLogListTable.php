@@ -1,10 +1,12 @@
 <?php
 namespace Inc\Geslib\Api;
 
+use Inc\Biblio\Api\BiblioApi;
 use WP_List_Table;
 use Inc\Geslib\Api\GeslibApiDbManager;
 
 class GeslibLogListTable extends WP_List_Table {
+    private $biblioApi;
 
     public function __construct() {
         parent::__construct([
@@ -12,6 +14,7 @@ class GeslibLogListTable extends WP_List_Table {
             'plural'   => 'geslib_logs', // Plural label of the table
             'ajax'     => true             // Does this table support ajax?
         ]);
+        $this->biblioApi = new BiblioApi;
 
     }
     public function prepare_items() {
@@ -135,7 +138,8 @@ class GeslibLogListTable extends WP_List_Table {
 
     public function column_filename($item) {
         $action = [
-            'update' => sprintf('<a href="?page=%s&action=%s&log_id=%s" class="update-status">Update Status</a>', $_GET['page'], 'update-status', $item['id']),
+            'set2logged' => sprintf('<a href="?page=%s&action=%s&log_id=%s" class="update-status">Set to logged</a>', $_GET['page'], 'update-status', $item['id']),
+            'set2processed' => sprintf('<a href="?page=%s&action=%s&log_id=%s" class="set-to-processed">Set to processed</a>', $_GET['page'], 'set-to-processed', $item['id']),
         ];
         return sprintf('%1$s %2$s', $item['filename'], $this->row_actions($action));
     }
@@ -149,7 +153,7 @@ class GeslibLogListTable extends WP_List_Table {
      */
     function column_cb( $item ) {
         return sprintf(
-            '<input type="checkbox" name="bulk-delete[]" value="%s" />', $item['ID']
+            '<input type="checkbox" name="bulk-delete[]" value="%s" />', $item['id']
         );
     }
 
@@ -168,9 +172,24 @@ class GeslibLogListTable extends WP_List_Table {
 
     public function update_log(int $log_id){
         global $wpdb;
-        $wpdb->update($wpdb->prefix."geslib_log",
+        try {
+            $wpdb->update($wpdb->prefix."geslib_log",
                         [ 'status' => 'logged' ],
                         [ 'id' => $log_id ]);
+        } catch (\Exception $exception) {
+            $this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__,'update_log', $exception->getMessage(), 'geslib');
+        }
+    }
+
+    public function set_to_processed(int $log_id){
+        global $wpdb;
+        try {
+            $wpdb->update($wpdb->prefix."geslib_log",
+                        [ 'status' => 'processed' ],
+                        [ 'id' => $log_id ]);
+        } catch (\Exception $exception) {
+            $this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'geslib');
+        }
     }
 
     public function process_bulk_action() {
@@ -191,8 +210,18 @@ class GeslibLogListTable extends WP_List_Table {
                 //foreach ($log_ids as $log_id) {
                 $this->update_log($log_id);
                 //}
-            wp_redirect( esc_url( add_query_arg() ) );
-            exit;
+                wp_redirect( esc_url( add_query_arg() ) );
+                exit;
+            }
+            if ( ( isset( $_REQUEST['action'] ) && $_REQUEST['action'] == 'set-to-processed' )
+            || ( isset( $_REQUEST['action2'] ) && $_REQUEST['action2'] == 'set-to-processed' )
+            ) {
+                $log_id = $_REQUEST['log_id'];
+                //foreach ($log_ids as $log_id) {
+                $this->set_to_processed($log_id);
+                //}
+                wp_redirect( esc_url( add_query_arg() ) );
+                exit;
             }
         //}
     }

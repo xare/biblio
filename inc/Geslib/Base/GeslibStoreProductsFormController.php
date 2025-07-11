@@ -4,14 +4,13 @@
  */
 namespace Inc\Geslib\Base;
 
+use Inc\Biblio\Api\BiblioApi;
 use Inc\Geslib\Api\GeslibApiDbManager;
 use Inc\Geslib\Api\GeslibApiLines;
 use Inc\Geslib\Api\GeslibApiReadFiles;
 use Inc\Geslib\Api\GeslibApiStoreData;
 use Inc\Geslib\Base\BaseController;
-use Inc\Dilve\Api\DilveApi;
 use Inc\Geslib\Api\GeslibApiDbLinesManager;
-use Inc\Geslib\Api\GeslibApiDbLoggerManager;
 use Inc\Geslib\Api\GeslibApiDbLogManager;
 use Inc\Geslib\Api\GeslibApiDbProductsManager;
 use Inc\Geslib\Api\GeslibApiDbQueueManager;
@@ -110,7 +109,7 @@ class GeslibStoreProductsFormController extends BaseController
     public function ajaxHandleStoreLines(){
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
         $geslibApiLines = new GeslibApiLines;
-        $geslibApiLines->storeToLines();
+        $geslibApiLines->storeToLines(1);
         update_option('geslib_admin_notice', 'Creada la cola de Lines');
         wp_send_json_success(['message' => 'Creada la cola de Lines. Puedes verlo en la pestaña "Queues".']);
     }
@@ -186,10 +185,10 @@ class GeslibStoreProductsFormController extends BaseController
 
     public function ajaxHandleStoreProducts() {
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
-        $geslibApiDbManager = new GeslibApiDbManager;
-        $geslibApiDbManager->storeProducts();
+        $geslibApiDbProductsManager = new GeslibApiDbProductsManager;
+        $geslibApiDbProductsManager->storeProducts();
         //$progress = get_option('geslib_product_progress', 0);
-        wp_send_json_success(['message' => 'Product Storing task has been queued', 'task_id' => $task_id]);
+        wp_send_json_success(['message' => 'Product Storing task has been queued']);
     }
 
     public function ajaxHandleProcessProductsQueue() {
@@ -203,126 +202,53 @@ class GeslibStoreProductsFormController extends BaseController
 
     public function ajaxHandleProcessAll() {
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
+        
         $geslibApiReadFiles = new GeslibApiReadFiles();
         $geslibApiLines = new GeslibApiLines();
-        $geslibApiDbManager = new GeslibApiDbManager();
         $geslibApiDbLogManager = new GeslibApiDbLogManager;
         $geslibApiDbLinesManager = new GeslibApiDbLinesManager;
-        $geslibApiDbProductsManager = new GeslibApiDbProductsManager;
         $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
-        $geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
-        $geslibApiStoreData = new GeslibApiStoreData;
+        $biblioApi = new BiblioApi;
+
         $geslibApiReadFiles->readFolder();
+        
         // Check if there are queues of type 'store_products' and execute them
         // Check if there are queues of type 'store_authors' and execute them
-        $queuetypes = ['store_products', 'build_content', 'store_authors', 'store_categories', 'store_editorials', 'store_lines', ];
+        $queuetypes = [
+            'store_lines', 
+            'build_content', 
+            'store_autors', 
+            'store_categories', 
+            'store_editorials',  
+            'store_colecciones', 
+            'store_products'
+        ];
         foreach( $queuetypes as $queuetype ) {
             $geslibApiDbQueueManager->processFromQueue( $queuetype );
+            $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Processing previous queues: '. $queuetype, 'geslib');
         }
         while( $geslibApiDbLogManager->checkLoggedStatus() ) {
             $log_id = $geslibApiDbLogManager->getGeslibLoggedId();
-            $geslibApiDbLoggerManager->geslibLogger($log_id, 0,'info', 'Current Log_id', 'geslib_log', [
-                'message' => 'Current log_id '.$log_id. ' to be queued.',
-                'file' => basename(__FILE__),
-                'class' => __CLASS__,
-                'function' => __METHOD__,
-                'line' => __LINE__,
-            ]);
-            $geslibApiDbLoggerManager->geslibLogger($log_id, 0, 'info', 'START', 'geslib_log', [
-                'message' => 'We start the full PROCESS',
-                'file' => basename(__FILE__),
-                'class' => __CLASS__,
-                'function' => __METHOD__,
-                'line' => __LINE__,
-            ]);
+            $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'New process: '. $log_id, 'geslib');
+
             if ( !$geslibApiDbLogManager->isQueued() ){
                 $geslibApiDbLogManager->setLogStatus( $log_id, 'queued' );
-                $geslibApiDbLoggerManager->geslibLogger($log_id, 0,'info', 'Set log to queued', 'geslib_log', [
-                    'message' => 'Log '.$log_id. ' has been queued.',
-                    'file' => basename(__FILE__),
-                    'class' => __CLASS__,
-                    'function' => __METHOD__,
-                    'line' => __LINE__,
-                ]);
+                $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Set log id: '. $log_id . ' to queued.', 'geslib');
             } else {
                 $geslibApiDbQueueManager->deleteItemsFromQueue( 'store_lines' );
-                $geslibApiDbLoggerManager->geslibLogger($log_id, 0, 'info', 'Reset store_lines', 'geslib_log', [
-                    'message' => 'Log '.$log_id. ' is already queued we delete store_lines from queue to start again.',
-                    'file' => basename(__FILE__),
-                    'class' => __CLASS__,
-                    'function' => __METHOD__,
-                    'line' => __LINE__,
-                ]);
+                $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Delete items from queue: store_lines.', 'geslib');
             }
+            $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Begin Store to lines. Log ID: '. $log_id, 'geslib');
             $geslibApiLines->storeToLines($log_id);
-            $geslibApiDbLoggerManager->geslibLogger($log_id, 0, 'info', 'Store to queue', 'geslib_queue', [
-                'message' => 'We are moving data from files to geslib_queued(store_lines).',
-                'file' => basename(__FILE__),
-                'class' => __CLASS__,
-                'function' => __METHOD__,
-                'line' => __LINE__,
-            ]);
-            $geslibApiDbQueueManager->processFromQueue('store_lines');
-            $geslibApiDbLoggerManager->geslibLogger($log_id, 0, 'info', 'Store to lines', 'geslib_lines', [
-                'message' => 'We are moving data from geslib_queued(store_lines) to geslib_lines.',
-                'file' => basename(__FILE__),
-                'class' => __CLASS__,
-                'function' => __METHOD__,
-                'line' => __LINE__,
-            ]);
-            $geslibApiDbQueueManager->processFromQueue('build_content');
-            //$geslibApiStoreData->storeAuthors();
-            $geslibApiDbLoggerManager->geslibLogger( $log_id, 0, 'info', 'Store to Terms', 'autors', [
-                'message' => 'Saving Authors.',
-                'file' => basename(__FILE__),
-                'class' => __CLASS__,
-                'function' => __METHOD__,
-                'line' => __LINE__,
-            ]);
-            //$geslibApiStoreData->storeEditorials();
-            $geslibApiDbLoggerManager->geslibLogger($log_id, 0,'info', 'Store to Terms', 'editorials', [
-                'message' => 'Saving Editorials.',
-                'file' => basename(__FILE__),
-                'class' => __CLASS__,
-                'function' => __METHOD__,
-                'line' => __LINE__,
-            ]);
-            //$geslibApiDbProductsManager->storeProducts();
-            $geslibApiDbLoggerManager->geslibLogger($log_id, 0, 'info', 'Store to Products 1', 'geslib_queues', [
-                'message' => 'Saving Product data to geslib_queues.',
-                'file' => basename(__FILE__),
-                'class' => __CLASS__,
-                'function' => __METHOD__,
-                'line' => __LINE__,
-            ]);
 
-            $geslibApiDbQueueManager->processFromQueue( 'store_editorials' );
-            $geslibApiDbQueueManager->processFromQueue( 'store_autors' );
-            $geslibApiDbQueueManager->processFromQueue( 'store_categories' );
-            $geslibApiDbQueueManager->processFromQueue( 'store_products' );
-            $geslibApiDbLoggerManager->geslibLogger($log_id, 0, 'info','Store to Products 2', 'products', [
-                'message' => 'Saving to woocommerce Products from geslib_queues.',
-                'file' => basename(__FILE__),
-                'class' => __CLASS__,
-                'function' => __METHOD__,
-                'line' => __LINE__,
-            ]);
+            foreach( $queuetypes as $queuetype ) {
+                $geslibApiDbQueueManager->processFromQueue( $queuetype );
+                $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Processing queues: '. $queuetype, 'geslib');
+            }
             $geslibApiDbLinesManager->truncateGeslibLines();
-            $geslibApiDbLoggerManager->geslibLogger($log_id, 0, 'info', 'truncate geslib_lines', 'geslib_lines', [
-                'message' => 'Empty the table geslib_lines.',
-                'file' => basename(__FILE__),
-                'class' => __CLASS__,
-                'function' => __METHOD__,
-                'line' => __LINE__,
-            ]);
+            $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Truncate Geslib Lines', 'geslib');
             $geslibApiDbLogManager->setLogStatus( $log_id, 'processed');
-            $geslibApiDbLoggerManager->geslibLogger($log_id, 0, 'info','set log to processed', 'geslib_log', [
-                'message' => 'Set log '.$log_id.' to processed',
-                'file' => basename(__FILE__),
-                'class' => __CLASS__,
-                'function' => __METHOD__,
-                'line' => __LINE__,
-            ]);
+            $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Set log id: '. $log_id . ' to processed.', 'geslib');
         }
         update_option('geslib_admin_notice', 'Procesando todos los archivos.');
         wp_send_json_success(['message' => 'Procesando todos los archivos.']);

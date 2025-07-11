@@ -2,9 +2,10 @@
 
 namespace Inc\Biblio;
 
+use Inc\Biblio\Base\Enqueue;
+use Inc\Biblio\Pages;
 
-
- final class init
+ final class Init
  {
     /**
      * Store all the classes inside an array
@@ -13,7 +14,11 @@ namespace Inc\Biblio;
      */
     public static function get_services(): array {
         return [
+            Base\Enqueue::class,
             Pages\Dashboard::class,
+            Base\SettingsLinks::class,
+            Base\CustomPostTypeController::class,
+            Base\CustomTaxonomyController::class,
         ];
     }
     /**

@@ -2,16 +2,24 @@
 
 namespace Inc\Covers\Api;
 
+use Inc\Biblio\Api\BiblioApi;
+
 class CoversApiDbLinesManager extends CoversApiDbManager {
 
+    private $biblioApi;
+
+    public function __construct() {
+        $this->biblioApi = new BiblioApi;
+    }
     public function insertLinesData(
                         int $log_id,
                         string $isbn,
                         string $path = '',
+                        string $type = 'dilve',
                         string $url_origin = '',
                         string $url_target = '',
                         string $error = '',
-                        int $attempts = 0
+                        int $attempts = 0,
                           ) :mixed {
 		global $wpdb;
         $table_name = $wpdb->prefix.self::COVERS_LINES_TABLE; // Replace with your actual table name if different
@@ -24,7 +32,8 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
             date('Y-m-d H:i:s'), // start_date
             false,
 			$error, // error
-            $attempts // scanned_products
+            $attempts, // scanned_products
+            $type, // dilve|cegal
 		];
 		$insertArray = array_combine(self::$coversLinesKeys, $coversLinesValues);
 
@@ -38,12 +47,11 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
             } else {
                 $wpdb->insert($wpdb->prefix . self::COVERS_LINES_TABLE,
 						$insertArray,
-						['%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d']);
+						['%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s']);
                 return $wpdb->insert_id;
             }
-
 		} catch (\Exception $e) {
-            error_log('This line has not been properly inserted into the database due to an error: '.$e->getMessage());
+            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "This line has not been properly inserted into the database due to an error: ".$e->getMessage(), 'covers');
             return false;
         }
 	}
@@ -68,12 +76,21 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
             $wpdb->update( $table_name, $data, $where, $format, $where_format);
             return true;
         } catch( \Exception $exception ) {
-            wp_error('Unable to update the row.'.$exception->getMessage());
+            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Unable to update the row.'.$exception->getMessage(), 'covers');
             return false;
         }
     }
 
-    public function set_origin_url( int $id, string $origin_url ): bool {
+    /**
+     * Updates the url_origin field in the database table for a given id.
+     *
+     * @param int $id The id of the row to update.
+     * @param string $origin_url The new value for the url_origin field.
+     * @throws \Exception If the update operation fails.
+     * @return bool True if the update is successful, false otherwise.
+     */
+
+    public function set_url_origin( int $id, string $origin_url ): bool {
         global $wpdb;
         $table_name = $wpdb->prefix.self::COVERS_LINES_TABLE; // Replace with your actual table name if different
         $data = [ 'url_origin' => $origin_url ];
@@ -84,7 +101,7 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
             $wpdb->update( $table_name, $data, $where, $format, $where_format);
             return true;
         } catch( \Exception $exception ) {
-            wp_error('Unable to update the row. '.$exception->getMessage());
+            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'covers');
             return false;
         }
     }
@@ -109,7 +126,7 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
             $wpdb->update( $table_name, $data, $where, $format, $where_format);
             return true;
         } catch( \Exception $exception ) {
-            wp_error('Unable to update the row. '.$exception->getMessage());
+            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'covers');
             return false;
         }
     }
@@ -124,10 +141,11 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
         $wpdb->query($sql);
     }
 
-    function get_product_featured_image_html($product_id) {
+    public function get_product_featured_image_html($product_id) {
+        return $product_id;
         // Check if the product ID is valid and a product exists
         if (!$product_id || !function_exists('wc_get_product')) {
-            return 'Product not found.';
+            return 'Product ID not found.';
         }
 
         $product = wc_get_product($product_id);

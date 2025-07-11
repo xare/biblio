@@ -1,153 +1,173 @@
 <?php
-namespace Inc\Covers\Api;
+    namespace Inc\Covers\Api;
 
-use WP_List_Table;
-use Inc\Covers\Api\CoversApiDbManager;
-use Inc\Covers\Api\CoversApiDbLoggerManager;
+    use WP_List_Table;
+    use Inc\Covers\Api\CoversApiDbManager;
 
-class CoversLoggerListTable extends WP_List_Table {
+    class CoversApiLinesListTable extends WP_List_Table {
 
-    private $coversApiDbLoggerManager;
+        public function __construct() {
+            parent::__construct([
+                'singular' => 'covers_lines',  // Singular label of the table
+                'plural'   => 'covers_lines', // Plural label of the table
+                'ajax'     => true             // Does this table support ajax?
+            ]);
 
-    public function __construct() {
-        parent::__construct([
-            'singular' => 'covers_logger',  // Singular label of the table
-            'plural'   => 'covers_loggers', // Plural label of the table
-            'ajax'     => true             // Does this table support ajax?
-        ]);
-
-    }
-    public function prepare_items() {
-        global $wpdb;
-        $coversApiDbLoggerManager = new CoversApiDbLoggerManager;
-        $loggerTable = $wpdb->prefix . $coversApiDbLoggerManager::covers_LOGGER_TABLE;
-        // define data set for WP_List_Table => data
-        $where = ''; // Initialize where clause
-        if ( isset( $_POST['filter_type'] ) && !empty( $_POST['filter_type'] )) {
-            $type = sanitize_text_field( $_POST['filter_type'] );
-            $where = $wpdb->prepare(' WHERE type = %s', $type );
         }
-        if ( isset( $_POST['filter_action'] ) && !empty( $_POST['filter_action'] )) {
-            $action = sanitize_text_field( $_POST['filter_action'] );
-            $where = $wpdb->prepare(' WHERE action = %s', $action);
+        public function prepare_items() {
+            global $wpdb;
+            $coversApiDbLinesManager = new CoversApiDbLinesManager;
+            $linesTable = $wpdb->prefix . $coversApiDbLinesManager::COVERS_LINES_TABLE;
+            // define data set for WP_List_Table => data
+            $where = ''; // Initialize where clause
+            if ( isset( $_POST['filter_isbn'] ) && !empty( $_POST['filter_isbn'] )) {
+                $isbn = sanitize_text_field( $_POST['filter_isbn'] );
+                $where = $wpdb->prepare(' WHERE isbn = %s', $isbn );
+            }
+            if ( isset( $_POST['filter_path'] ) && !empty( $_POST['filter_path'] )) {
+                $path = sanitize_text_field( $_POST['filter_path'] );
+                $where = $wpdb->prepare(' WHERE path = %s', $path);
+            }
+            if ( isset( $_POST['filter_url_origin'] ) && !empty( $_POST['filter_url_origin'] )) {
+                $url_origin = sanitize_text_field($_POST['filter_url_origin']);
+                $where = $wpdb->prepare(' WHERE url_origin = %s', $url_origin);
+            }
+            if ( isset( $_POST['filter_url_target']) && !empty( $_POST['filter_url_target'] )) {
+                $url_target = sanitize_text_field($_POST['filter_url_target']);
+                $where = $wpdb->prepare(' WHERE url_target = %s', $url_target);
+            }
+            if ( isset( $_POST['filter_date'] ) && !empty( $_POST['filter_date'] )) {
+                $date = sanitize_text_field( $_POST['filter_date'] );
+                $where = $wpdb->prepare( ' WHERE date = %s', $date );
+            }
+            if ( isset( $_POST['filter_isError'] ) && !empty( $_POST['filter_isError'] )) {
+                $isError = sanitize_text_field( $_POST['filter_isError'] );
+                $where = $wpdb->prepare( ' WHERE isError = %d', $isError );
+            }
+            if ( isset( $_POST['filter_error'] ) && !empty( $_POST['filter_error'] )) {
+                $error = sanitize_text_field( $_POST['filter_error'] );
+                $where = $wpdb->prepare( ' WHERE error = %s', $error );
+            }
+            if ( isset( $_POST['filter_attempts'] ) && !empty( $_POST['filter_attempts'] )) {
+                $attempts = sanitize_text_field( $_POST['filter_attempts'] );
+                $where = $wpdb->prepare( ' WHERE attempts = %d', $attempts );
+            }
+            if ( isset( $_POST['filter_log_id'] ) && !empty( $_POST['filter_log_id'] )) {
+                $log_id = sanitize_text_field( $_POST['filter_log_id'] );
+                $where = $wpdb->prepare( ' WHERE log_id = %d', $log_id );
+            }
+            if ( isset( $_POST['filter_type'] ) && !empty( $_POST['filter_type'] )) {
+                $type = sanitize_text_field( $_POST['filter_type'] );
+                $where = $wpdb->prepare( ' WHERE type = %s', $type );
+            }
+
+            $orderby = isset( $_GET['orderby'] ) ? trim( $_GET['orderby'] ): "id";
+            $order = isset( $_GET['order'] ) ? trim( $_GET['order'] ): "ASC";
+
+            $search_term = isset($_POST['s'])? trim($_POST['s']) : "";
+            if ($search_term) {
+                $search_term = sanitize_text_field($search_term);
+                $where = " WHERE isbn LIKE '%{$search_term}%'
+                            OR path LIKE '%{$search_term}%'
+                            OR url_origin LIKE '%{$search_term}%'
+                            OR url_target LIKE '%{$search_term}%'
+                            OR error LIKE '%{$search_term}%'
+                            OR type LIKE '%{$search_term}%'";
+            }
+            // First, get the total count of items
+            $sql_count = "SELECT COUNT(*) FROM {$linesTable} {$where}";
+            $total_items = $wpdb->get_var($sql_count);
+
+            // Set how many records per page to show
+            $per_page = 20;
+
+            // Calculate the total number of pages
+            $total_pages = ceil($total_items / $per_page);
+
+
+            $this->items = $this->wp_list_table_data($where, $per_page,  $orderby, $order);
+
+            // Set the pagination arguments
+            $this->set_pagination_args([
+                'total_items' => $total_items, // Total number of items
+                'per_page'    => $per_page,    // How many items to show on a page
+                'total_pages' => $total_pages  // Total number of pages
+            ]);
+            $columns = $this->get_columns();
+            $hidden = $this->get_hidden_columns(); // Define hidden columns here if any
+            $sortable = $this->get_sortable_columns(); // Define sortable columns here if any
+            $this->_column_headers = [$columns, $hidden, $sortable];
         }
-        if ( isset( $_POST['filter_entity'] ) && !empty( $_POST['filter_entity'] )) {
-            $entity = sanitize_text_field($_POST['filter_entity']);
-            $where = $wpdb->prepare(' WHERE entity = %s', $entity);
+
+        public function wp_list_table_data($where = '', $per_page = 20,  $orderby = '', $order = '', $search_term = '') {
+            global $wpdb;
+            $coversApiDbManager = new CoversApiDbManager;
+            // Determine what page the user is currently looking at
+            $current_page = $this->get_pagenum();
+            $offset = ($current_page - 1) * $per_page;
+
+            $table = $wpdb->prefix . $coversApiDbManager::COVERS_LINES_TABLE;
+            $sql_data = $wpdb->prepare("SELECT * FROM {$table} {$where} ORDER BY {$orderby} {$order} LIMIT {$per_page} OFFSET {$offset}");
+            return  $wpdb->get_results($sql_data, ARRAY_A);
         }
-        if ( isset( $_POST['filter_log_id']) && !empty( $_POST['filter_log_id'] )) {
-            $log_id = sanitize_text_field($_POST['filter_log_id']);
-            $where = $wpdb->prepare(' WHERE log_id = %d', $log_id);
+
+        public function get_columns() {
+            $columns = [
+                'id' => 'ID',
+                'image' => 'Image',
+                'log_id' => 'Log ID',
+                'isbn' => 'ISBN',
+                'booktitle' => 'Book Title',
+                'path' => 'Path',
+                'url_origin' => 'URL Origen',
+                'url_target' => 'URL Target',
+                'date' => 'Date',
+                'isError' => 'Is Error',
+                'error' => 'Error',
+                'attempts' => 'Attempts',
+                'type' => 'Type',
+            ];
+            return $columns;
         }
-        if ( isset( $_POST['filter_geslib_id'] ) && !empty( $_POST['filter_geslib_id'] )) {
-            $geslib_id = sanitize_text_field( $_POST['filter_geslib_id'] );
-            $where = $wpdb->prepare( ' WHERE geslib_id = %d', $geslib_id );
+
+        public function get_hidden_columns() {
+            return [];
         }
 
-        $orderby = isset( $_GET['orderby'] ) ? trim( $_GET['orderby'] ): "id";
-        $order = isset( $_GET['order'] ) ? trim( $_GET['order'] ): "ASC";
-
-        $search_term = isset($_POST['s'])? trim($_POST['s']) : "";
-        if ($search_term) {
-            $search_term = sanitize_text_field($search_term);
-            $where = " WHERE type LIKE '%{$search_term}%'
-                                        OR entity LIKE '%{$search_term}%'
-                                        OR action LIKE '%{$search_term}%'
-                                        OR metadata LIKE '%{$search_term}%'";
+        public function get_sortable_columns() {
+            return [
+                'id' => ['id', false],
+                'log_id' => ['log_id', false],
+                'isbn' => ['isbn', false],
+                'booktitle' => ['booktitle', false],
+                'path' => ['path', false],
+                'url_origin' => ['url_origin', false],
+                'url_target' => ['url_target', false],
+                'date' => ['date', false],
+                'isError' => ['isError', false],
+                'error' => ['error', false],
+                'attempts' => ['attempts', false],
+                'type' => ['type', false],
+            ];
         }
-        // First, get the total count of items
-        $sql_count = "SELECT COUNT(*) FROM {$loggerTable} {$where}";
-        $total_items = $wpdb->get_var($sql_count);
 
-        // Set how many records per page to show
-        $per_page = 20;
-
-        // Calculate the total number of pages
-        $total_pages = ceil($total_items / $per_page);
-
-
-        $this->items = $this->wp_list_table_data($where, $per_page,  $orderby, $order);
-
-        // Set the pagination arguments
-        $this->set_pagination_args([
-            'total_items' => $total_items, // Total number of items
-            'per_page'    => $per_page,    // How many items to show on a page
-            'total_pages' => $total_pages  // Total number of pages
-        ]);
-        $columns = $this->get_columns();
-        $hidden = $this->get_hidden_columns(); // Define hidden columns here if any
-        $sortable = $this->get_sortable_columns(); // Define sortable columns here if any
-        $this->_column_headers = [$columns, $hidden, $sortable];
+        public function column_default( $item, $column_name ) {
+            $coversApiDbLinesManager = new CoversApiDbLinesManager;
+            return match($column_name) {
+                'id' => $item[$column_name],
+                'log_id' => $item[$column_name],
+                'isbn' => $item[$column_name],
+                'path' => $item[$column_name],
+                'booktitle' => "<a href='post.php?post=" . $item['book_id'] . "&action=edit' target='_blank'>" . $item[$column_name] . "</a>",
+                'url_origin' => "<a href='" . $item[$column_name] . "' target='_blank'>" . $item[$column_name] . "</a>",
+                'url_target' => "<a href='" . $item[$column_name] . "' target='_blank'>" .$item[$column_name] . "</a>",
+                'date' => $item[$column_name],
+                'error' => $item[$column_name],
+                'isError' => $item[$column_name],
+                'attempts' => $item[$column_name],
+                'type' => $item[$column_name],
+                'image' => $coversApiDbLinesManager->get_product_featured_image_html($item['book_id']),
+                default => 'no value',
+            };
+        }
     }
-
-    public function wp_list_table_data($where = '', $per_page = 20,  $orderby = '', $order = '', $search_term = '') {
-        global $wpdb;
-        $coversApiDbManager = new CoversApiDbManager;
-        // Determine what page the user is currently looking at
-        $current_page = $this->get_pagenum();
-        $offset = ($current_page - 1) * $per_page;
-
-        $loggerTable = $wpdb->prefix . $coversApiDbManager::covers_LOGGER_TABLE;
-        $sql_data = $wpdb->prepare("SELECT * FROM {$loggerTable} {$where} ORDER BY {$orderby} {$order} LIMIT {$per_page} OFFSET {$offset}");
-        return  $wpdb->get_results($sql_data, ARRAY_A);
-    }
-
-    public function get_columns() {
-        $columns = [
-            'date' => 'Date',
-            'id' => 'ID',
-            'log_id' => 'Log ID',
-            'geslib_id' => 'Geslib ID',
-            'type' => 'Type',
-            'action' => 'Action',
-            'entity' => 'Entity',
-            'message' => 'Message',
-            'file' => 'File',
-            'class' => 'Class',
-            'function' => 'Function',
-            'line' => 'Line',
-        ];
-        return $columns;
-    }
-
-    public function get_hidden_columns() {
-        return [];
-    }
-
-    public function get_sortable_columns() {
-        return [
-            'id' => ['id', false],
-            'date' => ['date', false],
-            'log_id' => ['log_id', false],
-            'geslib_id' => ['eslib', false],
-            'type' => ['type', false],
-            'action' => ['action', false],
-            'entity' => ['entity', false],
-            'file' => ['file', false],
-            'class' => ['class', false],
-            'function' => ['function', false],
-        ];
-    }
-
-    public function column_default( $item, $column_name ) {
-        $metadata = json_decode($item['metadata']);
-        return match($column_name) {
-            'date' => $item[$column_name],
-            'id' => $item[$column_name],
-            'log_id' => $item[$column_name],
-            'geslib_id' => $item[$column_name],
-            'type' => $item[$column_name],
-            'action' => $item[$column_name],
-            'entity' => $item[$column_name],
-            'message' => $metadata->message,
-            'file' => $metadata->file,
-            'class' => $metadata->class,
-            'function' => $metadata->function,
-            'line' => $metadata->line,
-            default => 'no value',
-        };
-    }
-
-
-
-}

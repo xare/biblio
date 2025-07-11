@@ -7,7 +7,7 @@ namespace Inc\Covers\Base;
 use Inc\Covers\Api\CoversApi;
 use Inc\Covers\Api\CoversApiDbLogManager;
 use Inc\Covers\Api\CoversApiDbManager;
-use Inc\Covers\Base\BaseController;
+use Inc\Biblio\Base\BaseController;
 
 /**
  * @class CoversScanProductsFormController

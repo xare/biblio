@@ -1,0 +1,2 @@
+https://www.cegalenred.com/peticiones/fichalibro.xml.php?USUARIO=LaRepartidora&CLAVE=1853LR28&ISBN=9788446025177&TIPOFICHA=C
+http://www.dilve.es/dilve/dilve/getRecordsX.do?user=ltrepajuntfemcali01&password=Bvgzm-39&identifier=9788446025177
