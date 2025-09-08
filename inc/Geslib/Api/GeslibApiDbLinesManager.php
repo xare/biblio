@@ -78,6 +78,10 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
 	 */
 	public function insertData( mixed $content_array, string $action, int $log_id, string $entity ): bool {
 		global $wpdb;
+        $this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Inserting the $entity data into geslib lines", 'geslib');
+        $this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Content array: " . print_r($content_array, true), 'geslib');
+        $this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Log ID: " . $log_id, 'geslib');
+        $this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Action: " . $action, 'geslib');
 		try {
 			$wpdb->insert(
 				$wpdb->prefix.self::GESLIB_QUEUES_TABLE,

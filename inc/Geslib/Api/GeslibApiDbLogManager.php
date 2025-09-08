@@ -31,6 +31,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 		];
 		$insertArray = array_combine(self::$geslibLogKeys, $geslibLogValues);
 		try {
+			$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Inserting the file $filename into geslib_log table", 'geslib');
 			$wpdb->insert($wpdb->prefix . self::GESLIB_LOG_TABLE,
 						$insertArray,
 						['%s', '%s', '%s', '%s', '%d']);

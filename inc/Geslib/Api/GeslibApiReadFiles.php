@@ -69,6 +69,7 @@ class GeslibApiReadFiles {
 					$zip->close();
 					$newLocation = (string) $zipFolder . $fileInfo['basename'];
 					try {
+						$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Moving the ZIP file $file to $newLocation", 'geslib');
 						(bool) rename($file, $newLocation);
 					} catch(\Exception $exception) {
 						$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Error while renaming the file: ".$exception->getMessage(), 'geslib');
@@ -92,6 +93,8 @@ class GeslibApiReadFiles {
 	private function _insert2geslibLog( string $filename ): void {
 		$geslibApiDbLogManager = new GeslibApiDbLogManager;
 		if ( !$geslibApiDbLogManager->isFilenameExists( basename( $filename ))) {
+			$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Inserting the file $filename into geslib_log", 'geslib');
+			// Insert the file into the log with status "logged".
 			$geslibApiDbLogManager->insertLogData( basename( $filename ), 'logged', count( file( $this->mainFolderPath . $filename )));
 		}
 	}
