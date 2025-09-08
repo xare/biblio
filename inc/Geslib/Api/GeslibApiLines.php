@@ -97,7 +97,9 @@ class GeslibApiLines {
 		"action",
 		"geslib_id",
 		"name",
-		"",
+		"name_short",
+		"country",
+		"url",
 		""
 	];
 	static array $coleccionKeys = [
@@ -297,7 +299,8 @@ class GeslibApiLines {
 		$geslibApiDbQueueManager = new GeslibApiDbQueueManager();
 		$data = explode( '|', $line ) ;
 		array_pop($data);
-
+		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Processing line: ' . $line , 'geslib');
+		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Data array: ' . print_r($data, true) , 'geslib');
 		if( in_array($data[0], self::$lineTypes ) ) {
 			$function_name = 'process' . $data[0];
 			if ( method_exists( $this, $function_name ) ) {
@@ -367,7 +370,7 @@ class GeslibApiLines {
 	 * process1L
 	 * EDITORIAL
 	 * 1L|B|codigo_editorial
-	 * 1L|Tipo movimiento|Codigo_editorial|Nombre|nombre_externo|País|
+	 * 1L|Tipo movimiento|Codigo_editorial|Nombre|nombre_externo|País|url|
 	 * 1L|A|1|VARIAS|VARIAS|ES|
 	 * @param  array $data
 	 * @param  int $log_id
@@ -379,8 +382,13 @@ class GeslibApiLines {
 		if ($data[1] === 'B') {
 			$keys = self::$editorialDeleteKeys;
 		}
+		if (count($keys) > count($data)) {
+            // Take only the keys that correspond to the length of $data
+            $keys = array_slice($keys, 0, count($data));
+        }
 		$content_array = array_combine($keys, $data);
 		$content_array = $this->geslibApiSanitize->sanitize_content_array( $content_array );
+		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Processing editorial: ' . print_r($content_array, true) , 'geslib');
 		$geslibApiDbLinesManager->insertData( $content_array, $data[1], $log_id , 'editorial');
 	}
 

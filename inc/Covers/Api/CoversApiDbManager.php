@@ -198,11 +198,30 @@ class CoversApiDbManager {
      * @return int
      */
     public function countAllProducts(): int {
-        return count( wc_get_products( [
-            'status' => 'publish',
-            'limit' => -1,
-        ]));
-	}
+        global $wpdb;
+        $this->biblioApi->debug_log(__CLASS__.':'.__LINE__.' '.__FUNCTION__, "Inside countAllProducts.", 'covers');
+        try {
+            /* $products = wc_get_products([
+                'status' => 'publish',
+                'limit' => -1,
+            ]);
+            $this->biblioApi->debug_log(__CLASS__.':'.__LINE__.' '.__FUNCTION__, "after wc products.", 'covers');
+            if (!is_array($products)) {
+                $this->biblioApi->debug_log(__CLASS__.':'.__LINE__.' '.__FUNCTION__, "wc_get_products did not return an array.", 'covers');
+                return 0;
+            }
+            $count = count($products); */
+            $count = (int) $wpdb->get_var(
+					"SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'product' AND post_status = 'publish'"
+					);
+            return $count;
+            $this->biblioApi->debug_log(__CLASS__.':'.__LINE__.' '.__FUNCTION__, "Product count: $count", 'covers');
+            return $count;
+        } catch (\Exception $e) {
+            $this->biblioApi->debug_log(__CLASS__.':'.__LINE__.' '.__FUNCTION__, "Exception: ".$e->getMessage(), 'covers');
+            return 0;
+        }
+    }
 
     /**
      * CoversApiDbManager->insertAttachment

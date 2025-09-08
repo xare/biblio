@@ -254,9 +254,12 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 	public function processFromQueue( string $type ): bool {
 		
 		global $wpdb;
+		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Processing queue type: ' . $type, 'geslib');
         $table_name = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
 		$preparedQuery1 = $wpdb->prepare("SELECT COUNT(*) FROM `$table_name` WHERE `type` = %s", $type);
 		$queue_count1 = $wpdb->get_var($preparedQuery1);
+		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Items in queue: ' . $queue_count1, 'geslib');
+		// If there are no items in the queue, return false
 		if($queue_count1 == 0) {
 			return false;
 		}
@@ -272,7 +275,7 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 			'store_categories' => 'processBatchStoreCategories',
 		*/
 		$methodName = 'processBatch' . str_replace('_', '', ucwords($type, '_'));
-		echo $methodName;
+		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Mapped method name: ' . $methodName, 'geslib');
 		// Check if the provided type is valid
 		if (method_exists($this, $methodName)) {
 			$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Running: ' . $methodName);
@@ -332,6 +335,7 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
         // If there are no tasks, exit the function.
         $geslibApiLines = new GeslibApiLines();
         foreach ($queue as $task) {
+			$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Processing log_id: '. $task->log_id . ' data: ' . $task->data, 'geslib');
             $geslibApiLines->readLine( $task->data, (int) $task->log_id );
         }
     }
