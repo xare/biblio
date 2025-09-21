@@ -179,11 +179,11 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 		}
 	}
 
-    /**
-     * getLogQueuedFilename
-     *
-     * @return mixed
-     */
+	/**
+	 * Retrieves the filename of the queued log.
+	 *
+	 * @return mixed The filename of the queued log, or another relevant value.
+	 */
     public function getLogQueuedFilename(): mixed {
 		global $wpdb;
 		$table_name = $wpdb->prefix . self::GESLIB_LOG_TABLE;
@@ -352,9 +352,9 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 	}
 
 	/**
-	 * getQueuedLogId
+	 * Retrieves the ID of the queued log entry.
 	 *
-	 * @return int|false
+	 * @return int|false Returns the log ID as an integer if found, or false if no queued log exists.
 	 */
 	public function getQueuedLogId(): int|false {
 		global $wpdb;
