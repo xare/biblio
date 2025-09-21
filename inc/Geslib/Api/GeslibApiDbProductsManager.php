@@ -8,8 +8,18 @@ use WC_Product_Simple;
 
 class GeslibApiDbProductsManager extends GeslibApiDbManager {
 
+	/**
+	 * Instance of the Biblio API used for interacting with bibliographic data.
+	 *
+	 * @var mixed $biblioApi
+	 */
 	private $biblioApi;
 
+	/**
+	 * Constructor for GeslibApiDbProductsManager.
+	 *
+	 * Initializes the class instance and sets up any required dependencies or properties.
+	 */
     public function __construct() {
         $this->biblioApi = new BiblioApi;
     }
@@ -262,6 +272,15 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
     }
 
 	// Helper function to get the product ID by 'geslib_id'
+	/**
+	 * Retrieves the WooCommerce product ID associated with a given Geslib ID.
+	 *
+	 * This function searches for a WooCommerce product that matches the provided Geslib ID
+	 * and returns its product ID if found.
+	 *
+	 * @param string|int $geslib_id The Geslib ID to search for.
+	 * @return int|null The WooCommerce product ID if found, or null if not found.
+	 */
 	function wc_get_product_id_by_geslib_id( $geslib_id ) {
 		global $wpdb;
 
@@ -277,13 +296,14 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 		return $product_id ? intval( $product_id ) : false;
 	}
 
-    /**
-     * stockProduct
-     *
-     * @param  mixed $geslib_id
-     * @param  $data
-     * @return void
-     */
+	/**
+	 * Updates the stock information for a product identified by its Geslib ID.
+	 *
+	 * @param int   $geslib_id The unique identifier of the product in Geslib.
+	 * @param mixed $data      The stock data to be updated for the product.
+	 *
+	 * @return void
+	 */
     public function stockProduct( int $geslib_id, $data ): void {
 		$data = json_decode($data);
         $stock = $data->stock;
@@ -332,10 +352,10 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
        wp_reset_postdata();
    }
 
-   /**
-	 * getTotalNumberOfProducts
+	/**
+	 * Retrieves the total number of products from the database.
 	 *
-	 * @return int
+	 * @return int The total count of products.
 	 */
 	public function getTotalNumberOfProducts(): int {
 		global $wpdb;
@@ -352,10 +372,10 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 		return $total;
 	}
 
-    /**
-	 * deleteAllProducts
+	/**
+	 * Deletes all products from the database.
 	 *
-	 * @return mixed
+	 * @return mixed The result of the delete operation.
 	 */
 	public function deleteAllProducts(): mixed {
 		// Query for all products
@@ -402,12 +422,12 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 		return json_encode( $response );
 	}
 
-    /**
-     * deleteProduct
-     *
-     * @param  int $geslib_id
-     * @return bool
-     */
+	/**
+	 * Deletes a product from the database using its Geslib ID.
+	 *
+	 * @param int $geslib_id The unique identifier of the product in Geslib.
+	 * @return bool Returns true if the product was successfully deleted, false otherwise.
+	 */
     public function deleteProduct( int $geslib_id ): bool {
 		$args = [
 			'post_type'      => 'product',
@@ -442,6 +462,13 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 		}
 	}
 
+	/**
+	 * Checks if a product identified by its Geslib ID has at least the specified stock.
+	 *
+	 * @param int $geslib_id The Geslib ID of the product to check.
+	 * @param int $stock The minimum stock quantity to verify (default is 0).
+	 * @return bool Returns true if the product has at least the specified stock, false otherwise.
+	 */
 	public function check_product_stock_by_geslib_id($geslib_id, $stock = 0) :bool {
 		// Fetch the product using the previous function
 		$product = $this->get_product_by_geslib_id($geslib_id);
@@ -453,6 +480,12 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 		return false; // Return false if no product found
 	}
 	
+	/**
+	 * Retrieves a product from the database using its Geslib ID.
+	 *
+	 * @param mixed $geslib_id The Geslib ID of the product to retrieve.
+	 * @return mixed The product data associated with the given Geslib ID, or null if not found.
+	 */
 	private function get_product_by_geslib_id($geslib_id): mixed {
 		// Query products based on custom field
 		$args = array(

@@ -253,11 +253,15 @@ class CoversApi {
 	 */
 	public function fetch_cover( string $url, string $isbn, string $type ): mixed {
 		$query = (string) $this->get_query($type, $isbn);
+		$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Fetch cover - URL: " . $url . PHP_EOL, 'covers');
+		$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Fetch cover - Query: " . $query . PHP_EOL, 'covers');
 		if ( $type == 'dilve' ) {
 			$client = new Client(['verify' => false, 'timeout' => 10.0]);
 			$coversApiDbLinesManager = new CoversApiDbLinesManager;
 			try {
 				$response = $client->get($url);
+				$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Response from API: " . $response->getBody() . PHP_EOL, 'covers');
+				return $response->getBody();
 			} catch( ConnectException $connectException ) {
 				$error = ['message'=> $connectException->getMessage()];
 				$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"Connection exception: " . $connectException->getMessage() , 'covers');
@@ -531,7 +535,7 @@ class CoversApi {
 			if (!$attachment) {
 				// If the file is not an attachment, create it
 				$file_id = $this->create_cover(
-					$uploads['baseurl'] . '/img/' . $subfolder . '/' . $filename . '.jpg',
+					$uploads['baseurl'] . '/img/' . $subfolder . '/' . $filename,
 					$ean . '.jpg',
 					'image/jpeg',
 					false,

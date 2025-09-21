@@ -379,13 +379,13 @@ class GeslibApiLines {
 	private function process1L( array $data, int $log_id ): void {
 		$geslibApiDbLinesManager = new GeslibApiDbLinesManager;
 		$keys = self::$editorialKeys;
-		if ($data[1] === 'B') {
-			$keys = self::$editorialDeleteKeys;
-		}
 		if (count($keys) > count($data)) {
             // Take only the keys that correspond to the length of $data
             $keys = array_slice($keys, 0, count($data));
         }
+		if ($data[1] === 'B') {
+			$keys = self::$editorialDeleteKeys;
+		}
 		$content_array = array_combine($keys, $data);
 		$content_array = $this->geslibApiSanitize->sanitize_content_array( $content_array );
 		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Processing editorial: ' . print_r($content_array, true) , 'geslib');

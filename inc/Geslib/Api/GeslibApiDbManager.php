@@ -9,9 +9,29 @@ use WC_Product_Simple;
 use WP_Query;
 
 class GeslibApiDbManager {
+	/**
+	 * Name of the database table used to store Geslib lines.
+	 *
+	 * @var string
+	 */
 	const GESLIB_LINES_TABLE = 'geslib_lines';
+	/**
+	 * Name of the database table used for logging Geslib API operations.
+	 *
+	 * @var string
+	 */
 	const GESLIB_LOG_TABLE = 'geslib_log';
+	/**
+	 * Name of the database table used for storing Geslib queue data.
+	 *
+	 * @var string
+	 */
 	const GESLIB_QUEUES_TABLE = 'geslib_queues';
+	/**
+	 * Static array containing the keys used for Geslib lines.
+	 *
+	 * @var array
+	 */
 	static $geslibLinesKeys = [
 		'log_id', // int relation oneToMany with geslib_log
 		'geslib_id', // int
@@ -21,6 +41,12 @@ class GeslibApiDbManager {
 		'content', // json
 		'queued' // boolean 0|1
 	];
+	/**
+	 * Static array containing the keys used for Geslib logging.
+	 * These keys are utilized to identify and categorize log entries within the Geslib API database manager.
+	 *
+	 * @var array
+	 */
 	static $geslibLogKeys = [
 		'filename', // string inter000
 		'start_date', // date
@@ -29,8 +55,17 @@ class GeslibApiDbManager {
 		'lines_count', // int number of lines
 	];
 
+	/**
+	 * Instance of the Biblio API used for interacting with bibliographic data.
+	 *
+	 * @var mixed
+	 */
 	private $biblioApi;
 
+	/**
+	 * Constructor for the GeslibApiDbManager class.
+	 * Initializes the database manager for the Geslib API integration.
+	 */
     public function __construct() {
         $this->biblioApi = new BiblioApi;
     }
@@ -82,12 +117,12 @@ class GeslibApiDbManager {
     }
 
 	/**
-	 * deleteTerm
-	 * Called by GeslibApiDbQueueManager
-	 *
-	 * @param  int $geslib_id
-	 * @param  string $taxonomy_name
-	 * @return bool
+	 * Deletes a term from the database based on the provided Geslib ID and taxonomy name.
+	 * Called by GeslibApiDbQueueManager.
+	 * 
+	 * @param int $geslib_id The Geslib ID of the term to delete.
+	 * @param string $taxonomy_name The name of the taxonomy from which to delete the term.
+	 * @return bool Returns true if the term was successfully deleted, false otherwise.
 	 */
 	public function deleteTerm( int $geslib_id, string $taxonomy_name ): bool {
 		$taxonomy_prefix = match($taxonomy_name) {

@@ -11,6 +11,16 @@ namespace Inc\Geslib\Api;
 
 class Encoding {
 
+  /**
+   * Mapping array for converting Windows-1252 encoded characters to UTF-8.
+   *
+   * This static property provides a lookup table to translate characters from
+   * the Windows-1252 character set to their corresponding UTF-8 representations.
+   * It is used internally to ensure proper encoding conversion when handling
+   * text data from sources that use Windows-1252 encoding.
+   *
+   * @var array
+   */
   protected static $win1252ToUtf8 = array(
         128 => "\xe2\x82\xac",
 
@@ -46,6 +56,12 @@ class Encoding {
         159 => "\xc5\xb8"
   );
 
+    /**
+     * Array mapping broken UTF-8 sequences to their correct UTF-8 representations.
+     * Used to fix encoding issues when processing data from external sources.
+     *
+     * @var array
+     */
     protected static $brokenUtf8ToUtf8 = array(
         "\xc2\x80" => "\xe2\x82\xac",
 
@@ -81,6 +97,14 @@ class Encoding {
         "\xc2\x9f" => "\xc5\xb8"
   );
 
+  /**
+   * Mapping array for converting UTF-8 encoded characters to their corresponding Windows-1252 encoding.
+   * 
+   * This static property provides a lookup table used to translate specific UTF-8 characters
+   * to Windows-1252 equivalents, facilitating character encoding conversions within the application.
+   *
+   * @var array
+   */
   protected static $utf8ToWin1252 = array(
        "\xe2\x82\xac" => "\x80",
 
@@ -116,7 +140,6 @@ class Encoding {
        "\xc5\xb8"     => "\x9f"
     );
 
-  static function toUTF8($text){
   /**
    * Function Encoding::toUTF8
    *
@@ -141,6 +164,7 @@ class Encoding {
    * @return string  The same string, UTF8 encoded
    *
    */
+  static function toUTF8($text){
 
     if(is_array($text)) {
       foreach($text as $k => $v) {
@@ -207,6 +231,12 @@ class Encoding {
     }
   }
 
+  /**
+   * Converts the given text to Windows-1252 encoding.
+   *
+   * @param string $text The input text to be converted.
+   * @return string The text encoded in Windows-1252.
+   */
   static function toWin1252($text) {
     if(is_array($text)) {
       foreach($text as $k => $v) {
@@ -223,14 +253,35 @@ class Encoding {
     }
   }
 
+  /**
+   * Converts the given text to ISO-8859-1 encoding.
+   *
+   * @param string $text The input text to be converted.
+   * @return string The text encoded in ISO-8859-1.
+   */
   static function toISO8859($text) {
     return self::toWin1252($text);
   }
 
+  /**
+   * Converts the given text to Latin-1 (ISO-8859-1) encoding.
+   *
+   * @param string $text The input text to be converted.
+   * @return string The text encoded in Latin-1.
+   */
   static function toLatin1($text) {
     return self::toWin1252($text);
   }
 
+  /**
+   * Attempts to fix UTF-8 encoding issues in the provided text.
+   *
+   * This static function takes a string and processes it to correct common
+   * UTF-8 encoding problems, ensuring the text is properly formatted and readable.
+   *
+   * @param string $text The input text that may contain UTF-8 encoding errors.
+   * @return string The corrected text with proper UTF-8 encoding.
+   */
   static function fixUTF8( $text ){
     if(is_array( $text )) {
       foreach( $text as $k => $v ) {
@@ -248,6 +299,16 @@ class Encoding {
     
   }
 
+  /**
+   * Fixes Windows-1252 specific characters in a UTF-8 encoded string.
+   *
+   * This static function scans the provided text for characters that are commonly
+   * mis-encoded when converting from Windows-1252 to UTF-8, and replaces them with
+   * their correct UTF-8 equivalents.
+   *
+   * @param string $text The input string potentially containing Windows-1252 characters.
+   * @return string The corrected string with proper UTF-8 encoding.
+   */
   static function UTF8FixWin1252Chars($text){
     // If you received an UTF-8 string that was converted from Windows-1252 as it was ISO8859-1
     // (ignoring Windows-1252 chars from 80 to 9F) use this function to fix it.
@@ -256,6 +317,12 @@ class Encoding {
     return str_replace(array_keys(self::$brokenUtf8ToUtf8), array_values(self::$brokenUtf8ToUtf8), $text);
   }
 
+  /**
+   * Removes the Byte Order Mark (BOM) from the beginning of a string, if present.
+   *
+   * @param string $str The input string that may contain a BOM.
+   * @return string The string with the BOM removed, if it was present.
+   */
   static function removeBOM($str=""){
     if(substr($str, 0,3) == pack("CCC",0xef,0xbb,0xbf)) {
       $str=substr($str, 3);

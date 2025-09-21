@@ -8,43 +8,22 @@ class GeslibApiStoreData {
     private $db;
     private $biblioApi;
 
+    /**
+     * Constructor for the GeslibApiStoreData class.
+     *
+     * Initializes any required properties or dependencies for the class.
+     */
     public function __construct() {
         $this->db = new GeslibApiDbManager();
         $this->biblioApi = new BiblioApi;
     }
 
-    public function storeProductCategories() {
-        global $wpdb;
-        $queueTable = $wpdb->prefix . 'geslib_queues';
-        $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
-        $geslibApiDbLinesManager = new GeslibApiDbLinesManager;
-        $product_categories = $geslibApiDbLinesManager->getCategoriesFromGeslibLines();
-        $batch_size = 3000; // Choose a reasonable batch size
-		$batch = [];
-        foreach($product_categories as $product_category) {
-            $item = [
-                'log_id' => $product_category['log_id'],
-                'geslib_id' => $product_category['geslib_id'],
-                'type' => 'store_categories'  // type to identify the task in processQueue
-            ];
-            if( isset($product_category['content']['action'])) {
-                $item['action'] = $product_category['content']['action'];
-            }
-            $item['data'] = $product_category['content'];
-            $batch[] = $item;
-            if ( count( $batch ) >= $batch_size ) {
-                $geslibApiDbQueueManager->insertCategoriesIntoQueue( $batch );
-                $batch = [];
-            }
-        }
-        // Return a status message indicating success or failure and/or count of categories added.
-        $totalAdded = count($product_categories);
-        $this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Added {$totalAdded} product categories to the queue.", 'geslib' );
-    }
-
-
     /**
-     * storeEditorials
+     * Stores product categories retrieved from the Geslib API.
+     *
+     * This method handles the process of fetching product categories data from the Geslib API
+     * and saving it into the local database or storage system. It may include data validation,
+     * transformation, and error handling as required by the application.
      *
      * @return void
      */
@@ -75,8 +54,11 @@ class GeslibApiStoreData {
     }
 
     /**
-     * storeAuthors
+     * Stores author data retrieved from the Geslib API.
      *
+     * This method handles the process of fetching author information from the Geslib API
+     * and saving it into the local database or storage system.
+     * 
      * Store Authors into geslib_queue('autors')
      *
      * @return void
