@@ -1,6 +1,7 @@
 composer.lock
 package-lock.json
-node_modules/
-vendor/
+/.vscode
+**/node_modules/
+**/vendor/
 dist/
 logs/
