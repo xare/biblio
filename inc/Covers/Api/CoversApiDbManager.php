@@ -36,6 +36,17 @@ class CoversApiDbManager {
 
     public function __construct() {
         $this->biblioApi = new BiblioApi;
+        static $meta_registered = false;
+        if ( $meta_registered ) {
+            return;
+        }
+        // register product meta so the source URL is stored and available in REST
+        if ( ! did_action('init') ) {
+            add_action('init', [ $this, 'register_cover_meta' ]);
+        } else {
+            $this->register_cover_meta();
+        }
+        $meta_registered = true;
     }
 
     public function getProductsWithoutCover(): array {
@@ -231,7 +242,7 @@ class CoversApiDbManager {
      * @param  string $filepath
      * @return mixed
      */
-    public function insertAttachment( string $filename, string $filepath ): mixed {
+    public function insertAttachment( string $filename, string $filepath): mixed {
         $args = [
             'post_mime_type' => 'image/jpeg',
             'post_title' => 'PORTADA: '. $filename,
@@ -270,4 +281,39 @@ class CoversApiDbManager {
 
         return ( !empty( $attachments ) )? $attachments : false;
     }
+    /**
+     * Register product post meta for cover source URL.
+     */
+    public function register_cover_meta(): void {
+        // Existing key used in the plugin: 'covers_url'
+        register_post_meta(
+            'product',
+            'covers_url',
+            [
+                'show_in_rest'      => true,
+                'single'            => true,
+                'type'              => 'string',
+                'sanitize_callback' => 'esc_url_raw',
+                'auth_callback'     => function() {
+                    return current_user_can('edit_posts');
+                },
+            ]
+        );
+    }
+
+    /**
+     * Save cover source URL for a product id (sanitized).
+     *
+     * @param int $product_id
+     * @param string $url
+     * @return bool
+     */
+    public function save_cover_source_by_product_id(int $product_id, string $url): bool {
+        if ($product_id <= 0 || empty($url)) {
+            return false;
+        }
+        return (bool) update_post_meta($product_id, 'covers_url', esc_url_raw($url));
+    }
+
+
 }

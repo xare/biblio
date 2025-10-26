@@ -424,6 +424,7 @@ class CoversApi {
 					if ( $cover_post = $this->create_cover( $book['cover_url'], $ean.'.jpg', 'image/jpeg', FALSE, $type ) ) {
 						$coversApiDbManager->set_featured_image_for_product($cover_post->ID, $ean);
 						$coversApiDbLinesManager->set_url_target($line_id, $product['ID']);
+						$coversApiDbManager->save_cover_source_by_product_id( (int) $product['ID'], $book['cover_url'] );
 						$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "The coverpost was properly created.".PHP_EOL, 'covers');
 					} else {
 						$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"The coverpost was not properly created".PHP_EOL, 'covers');
@@ -436,6 +437,7 @@ class CoversApi {
 					$coversApiDbManager->set_featured_image_for_product( $file->ID, $ean );
 					$coversApiDbLinesManager->setBook($product['post_title'], $product['ID'], $line_id);
 					$coversApiDbLinesManager->set_url_target($line_id, $product['ID']);
+					$coversApiDbManager->save_cover_source_by_product_id( (int) $product['ID'], $book['cover_url'] );
 					$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"The coverpost was properly created for product: ".$product['post_title'].PHP_EOL, 'covers');
 				} else {
 					$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"The coverpost was not properly created".PHP_EOL, 'covers');

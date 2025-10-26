@@ -1,0 +1,28 @@
+@startuml
+' Tables based on Activate.php (wp_ prefix omitted)
+entity geslib_log {
+  + id : mediumint unsigned <<PK>>
+  filename : text
+  start_date : datetime
+  end_date : datetime
+  status : text
+  lines_count : int
+}
+
+entity geslib_queues {
+  + id : int unsigned <<PK>>
+  log_id : mediumint unsigned <<FK geslib_log.id>>
+  geslib_id : text
+  type : varchar(255)
+  data : text
+}
+
+' Foreign key relationship: one log -> many queue rows
+geslib_log ||--o{ geslib_queues : "log_id"
+
+' Logical grouping (not an FK) used to link parent/child rows in the queue table
+note right of geslib_queues
+  geslib_id groups related queue rows
+  (parent/child relationships are encoded within this table)
+end note
+@enduml

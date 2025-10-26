@@ -1,0 +1,200 @@
+@startuml
+' Diagram of classes in inc/Api and inc/Api/Callbacks
+
+package "Inc\\Biblio\\Api" {
+  class SettingsApi {
+    + admin_pages: array
+    + admin_subpages: array
+    + settings: array
+    + sections: array
+    + fields: array
+    + register()
+    + addPages(array)
+    + withSubPage(string)
+    + addSubPages(array)
+    + addAdminMenu()
+    + registerCustomFields()
+  }
+
+  class BiblioApi {
+    + debug_log(title, message, plugintype='biblio')
+  }
+}
+
+package "Inc\\Biblio\\Api\\Callbacks" {
+  class AdminCallbacks {
+    + adminDashboard()
+    + adminCustomPostType()
+    + adminTaxonomy()
+    + biblioOptionsGroup($input)
+    + biblioAdminSection()
+    + biblioTextExample()
+    + biblioFirstName()
+  }
+
+  class ManagerCallbacks {
+    + checkboxSanitize($input)
+    + adminSectionManager()
+    + checkboxField($args)
+  }
+
+  class CptCallbacks {
+    + cptSectionManager()
+    + cptSanitize($input)
+    + textField($args)
+    + checkboxField($args)
+  }
+
+  class TaxonomyCallbacks {
+    + taxonomySectionManager()
+    + taxonomySanitize($input)
+    + textField($args)
+    + checkboxField($args)
+    + checkboxPostTypesField($args)
+  }
+}
+
+package "Inc\\Biblio\\Base" {
+  class BaseController {
+    ' provides: plugin_templates_path, managers, common helpers
+  }
+}
+
+' Inheritance
+AdminCallbacks --|> BaseController
+ManagerCallbacks --|> BaseController
+
+' Associations / usage
+SettingsApi ..> AdminCallbacks : "registers as admin menu callbacks\n(add_menu_page / add_submenu_page)"
+SettingsApi ..> ManagerCallbacks : "uses as settings / sanitize callbacks"
+SettingsApi ..> CptCallbacks : "uses for CPT settings UI"
+SettingsApi ..> TaxonomyCallbacks : "uses for taxonomy settings UI"
+
+AdminCallbacks ..> BiblioApi : "may call debug_log() (logging helper)"
+ManagerCallbacks ..> BiblioApi
+CptCallbacks ..> BiblioApi
+TaxonomyCallbacks ..> BiblioApi
+
+' Notes with file references
+note left of SettingsApi
+  file: inc/Api/SettingsApi.php
+  Holds arrays for pages/settings and registers WP hooks
+end note
+
+note right of AdminCallbacks
+  file: inc/Api/Callbacks/AdminCallbacks.php
+  Renders admin templates (uses plugin_templates_path)
+end note
+
+note right of ManagerCallbacks
+  file: inc/Api/Callbacks/ManagerCallbacks.php
+  Extends BaseController; uses $this->managers for checkbox sanitization
+end note
+
+note bottom of BiblioApi
+  file: inc/Api/BiblioApi.php
+  Simple logging helper writing plugin logs under plugins/biblio/logs/
+end note
+
+@enduml
+``` 
+
+Is this level of detail good, or do you want relations shown as ER (tables) or with method-level callers/diagrams for a specific flow?@startuml
+' Diagram of classes in inc/Api and inc/Api/Callbacks
+
+package "Inc\\Biblio\\Api" {
+  class SettingsApi {
+    + admin_pages: array
+    + admin_subpages: array
+    + settings: array
+    + sections: array
+    + fields: array
+    + register()
+    + addPages(array)
+    + withSubPage(string)
+    + addSubPages(array)
+    + addAdminMenu()
+    + registerCustomFields()
+  }
+
+  class BiblioApi {
+    + debug_log(title, message, plugintype='biblio')
+  }
+}
+
+package "Inc\\Biblio\\Api\\Callbacks" {
+  class AdminCallbacks {
+    + adminDashboard()
+    + adminCustomPostType()
+    + adminTaxonomy()
+    + biblioOptionsGroup($input)
+    + biblioAdminSection()
+    + biblioTextExample()
+    + biblioFirstName()
+  }
+
+  class ManagerCallbacks {
+    + checkboxSanitize($input)
+    + adminSectionManager()
+    + checkboxField($args)
+  }
+
+  class CptCallbacks {
+    + cptSectionManager()
+    + cptSanitize($input)
+    + textField($args)
+    + checkboxField($args)
+  }
+
+  class TaxonomyCallbacks {
+    + taxonomySectionManager()
+    + taxonomySanitize($input)
+    + textField($args)
+    + checkboxField($args)
+    + checkboxPostTypesField($args)
+  }
+}
+
+package "Inc\\Biblio\\Base" {
+  class BaseController {
+    ' provides: plugin_templates_path, managers, common helpers
+  }
+}
+
+' Inheritance
+AdminCallbacks --|> BaseController
+ManagerCallbacks --|> BaseController
+
+' Associations / usage
+SettingsApi ..> AdminCallbacks : "registers as admin menu callbacks\n(add_menu_page / add_submenu_page)"
+SettingsApi ..> ManagerCallbacks : "uses as settings / sanitize callbacks"
+SettingsApi ..> CptCallbacks : "uses for CPT settings UI"
+SettingsApi ..> TaxonomyCallbacks : "uses for taxonomy settings UI"
+
+AdminCallbacks ..> BiblioApi : "may call debug_log() (logging helper)"
+ManagerCallbacks ..> BiblioApi
+CptCallbacks ..> BiblioApi
+TaxonomyCallbacks ..> BiblioApi
+
+' Notes with file references
+note left of SettingsApi
+  file: inc/Api/SettingsApi.php
+  Holds arrays for pages/settings and registers WP hooks
+end note
+
+note right of AdminCallbacks
+  file: inc/Api/Callbacks/AdminCallbacks.php
+  Renders admin templates (uses plugin_templates_path)
+end note
+
+note right of ManagerCallbacks
+  file: inc/Api/Callbacks/ManagerCallbacks.php
+  Extends BaseController; uses $this->managers for checkbox sanitization
+end note
+
+note bottom of BiblioApi
+  file: inc/Api/BiblioApi.php
+  Simple logging helper writing plugin logs under plugins/biblio/logs/
+end note
+
+@enduml
