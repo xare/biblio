@@ -529,7 +529,7 @@ class CoversApi {
 				$filepath = $filepath_JPG;
 				$filename = $filename_JPG;
 			} else {
-				$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "File does not exist: " . $filepath_jpg . " or " . $filepath_JPG . PHP_EOL, 'covers');
+				$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "File does not exist for product id [" . $product->ID . "]: " . $filepath_jpg . " or " . $filepath_JPG . PHP_EOL, 'covers');
 				continue;
 			}
 			// Check if the file is an attachment in the media library
