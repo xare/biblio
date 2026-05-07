@@ -4,7 +4,11 @@
     "description": "Biblio WP plugin",
     "main": "gulpfile.js",
     "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "test": "phpunit",
+        "test:coverage": "phpunit --coverage-html ./coverage",
+        "test:watch": "phpunit --watch .",
+        "test:unit": "phpunit tests/Unit",
+        "test:integration": "phpunit tests/Integration"
     },
     "repository": {
         "type": "git",

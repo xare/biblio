@@ -429,6 +429,10 @@ class CoversApi {
 					} else {
 						$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"The coverpost was not properly created".PHP_EOL, 'covers');
 					}
+					if ( isset($book['subtitle']) && !empty($book['subtitle']) ) {
+						update_post_meta( $product['ID'], '_subtitle', $book['subtitle'] );
+						$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Subtitle updated from DILVE: " . $book['subtitle'] . PHP_EOL, 'covers');
+					}
 					$coversApiDbManager->set_covers_url($ean, $book['cover_url']);
 				}
 			} else {

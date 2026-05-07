@@ -91,6 +91,7 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 		$editorial_geslib_id = isset($content['editorial']) ? $content['editorial']:'';
 		$book_name = isset($content['description']) ? $content['description']:'';;
 		$peso = isset($content['peso']) ? $content['peso']/1000 : 0;
+		$book_subtitle = isset($content['subtitulo']) ? $content['subtitulo'] : '';
 		$book_description = '';
 		$stock = isset($content['stock']) ? $content['stock'] : 0;
 
@@ -152,6 +153,9 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 			if( isset($ean) ){
 				update_post_meta($product_id, '_ean', $ean);
 				update_post_meta($product_id, '_num_paginas', $num_paginas);
+			}
+			if( isset($book_subtitle) && $book_subtitle !== '' ) {
+				update_post_meta($product_id, '_subtitle', $book_subtitle);
 			}
 			if( isset($author) ) {
 				update_post_meta($product_id, '_author', $author);

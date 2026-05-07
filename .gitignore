@@ -5,3 +5,7 @@ package-lock.json
 **/vendor/
 dist/
 logs/
+
+# PHPUnit
+coverage/
+.phpunit.result.cache

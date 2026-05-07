@@ -10,6 +10,11 @@
             "Inc\\Covers\\": "./inc/Covers"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "./tests"
+        }
+    },
     "authors": [{
         "name": "Juan Etxenike Almeida",
         "email": "xaresd@gmail.com"
@@ -17,5 +22,9 @@
     "minimum-stability": "dev",
     "require": {
         "guzzlehttp/guzzle": "^7.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0",
+        "mockery/mockery": "^1.5"
     }
 }
