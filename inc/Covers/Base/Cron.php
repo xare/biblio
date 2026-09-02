@@ -81,9 +81,9 @@ class Cron extends BaseController {
     public function missingCoversCron() {
         $coversApi = new CoversApi;
         $biblioApi = new BiblioApi;
-        $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'End Missing Covers Cron:', 'covers');
+        $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'START Missing Covers Cron:', 'missingcovers');
         $coversApi->attach_local_missing_covers();
-        $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'End Missing Covers Cron:', 'covers');
+        $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'End Missing Covers Cron:', 'missingcovers');
     }
 
 }

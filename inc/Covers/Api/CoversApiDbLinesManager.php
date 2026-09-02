@@ -43,11 +43,13 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
             if( $line_id ) {
                 $sql = "UPDATE $table_name SET attempts = attempts + 1 WHERE id = $line_id";
                 $wpdb->query($sql);
+                $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Line with ISBN: $isbn already exists. Incrementing attempts. LINE ID: $line_id", 'covers');
                 return $line_id;
             } else {
                 $wpdb->insert($wpdb->prefix . self::COVERS_LINES_TABLE,
 						$insertArray,
 						['%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s']);
+                $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Inserted new line with ISBN: $isbn. LINE ID: " . $wpdb->insert_id, 'covers');
                 return $wpdb->insert_id;
             }
 		} catch (\Exception $e) {

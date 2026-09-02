@@ -46,6 +46,7 @@ class GeslibApiReadFiles {
 	 */
 	public function readFolder(): array {
 		$files = (array) glob( $this->mainFolderPath . 'INTER*' );
+		$this->biblioApi->getLogger()->debug('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Reading folder: '. $this->mainFolderPath . ' with ' . count($files) . ' files found.', 'geslib');
 		$zipFolder = (string) $this->mainFolderPath . 'zip/';
 		// Check if the zip folder exists, if not create it
 		// The true parameter allows the creation of nested directories as needed
@@ -62,18 +63,48 @@ class GeslibApiReadFiles {
 				//is a zip file. Will first decompress it and then take the decompressed file to the geslib log
 				// Initialize the ZipArchive class
 				$zip = new ZipArchive();
-				if ( $zip->open($file) ) {
-					// Extract the files to the mainFolderPath
-					$zip->extractTo( $this->mainFolderPath );
-					// Insert into geslib_log if not already
-					$zip->close();
-					$newLocation = (string) $zipFolder . $fileInfo['basename'];
+				$openResult = $zip->open($file);
+				if ( $openResult === true ) {
+					try{
+						// Extract the files to the mainFolderPath
+						$zip->extractTo( $this->mainFolderPath );
+						// Insert into geslib_log if not already
+						$zip->close();
+						$newLocation = (string) $zipFolder . $fileInfo['basename'];
+						$this->biblioApi->getLogger()->debug('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Moving the ZIP file $file to $newLocation", 'geslib');
+						try {
+							(bool) rename($file, $newLocation);
+						} catch(\Exception $exception) {
+							$error_msg = "Error while copying the file to zip folder: ".$exception->getMessage();
+							error_log($error_msg);
+						}
+					} catch(\Exception $exception) {
+						$error_msg = "Error extracting zip file {$fileInfo['basename']}: ".$exception->getMessage();
+						error_log($error_msg);
+						$zip->close();
+					}
+					
 					try {
-						$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Moving the ZIP file $file to $newLocation", 'geslib');
+						$this->biblioApi->getLogger()->debug('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Moving the ZIP file $file to $newLocation", 'geslib');
 						(bool) rename($file, $newLocation);
 					} catch(\Exception $exception) {
-						$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Error while renaming the file: ".$exception->getMessage(), 'geslib');
+						$this->biblioApi->getLogger()->debug('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Error while renaming the file: ".$exception->getMessage(), 'geslib');
 					}
+				} else {
+					// Log the zip open error
+					$zip_errors = [
+						ZipArchive::ER_EXISTS => 'File already exists',
+						ZipArchive::ER_INCONS => 'Zip archive inconsistent',
+						ZipArchive::ER_INVAL => 'Invalid argument',
+						ZipArchive::ER_MEMORY => 'Malloc failure',
+						ZipArchive::ER_NOENT => 'No such file',
+						ZipArchive::ER_NOZIP => 'Not a zip archive',
+						ZipArchive::ER_OPEN => 'Can\'t open file',
+						ZipArchive::ER_READ => 'Read error',
+						ZipArchive::ER_SEEK => 'Seek error',
+					];
+					$this->biblioApi->getLogger()->debug('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Cannot open zip file {$fileInfo['basename']}: " . ($zip_errors[$openResult] ?? "Unknown error code $openResult"), 'geslib');
+
 				}
 			}
 			$filenames[] = $fileInfo['filename'];
@@ -92,11 +123,20 @@ class GeslibApiReadFiles {
 	 */
 	private function _insert2geslibLog( string $filename ): void {
 		$geslibApiDbLogManager = new GeslibApiDbLogManager;
-		if ( !$geslibApiDbLogManager->isFilenameExists( basename( $filename ))) {
-			$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Inserting the file $filename into geslib_log", 'geslib');
-			// Insert the file into the log with status "logged".
-			$geslibApiDbLogManager->insertLogData( basename( $filename ), 'logged', count( file( $this->mainFolderPath . $filename )));
+		$basename = basename( $filename );
+		$lastStatus = $geslibApiDbLogManager->getLastStatusForFilename( $basename );
+
+		if ( $lastStatus === null ) {
+			// Brand new filename — first time seen
+			$this->biblioApi->getLogger()->debug('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Inserting new file $basename into geslib_log (cycle 1)", 'geslib');
+			$geslibApiDbLogManager->insertLogData( $basename, 'logged', count( file( $this->mainFolderPath . $filename ) ), 1 );
+		} elseif ( $lastStatus === 'processed' ) {
+			// File was recycled: same name, new content — insert with next cycle
+			$nextCycle = $geslibApiDbLogManager->getNextCycle( $basename );
+			$this->biblioApi->getLogger()->debug('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "File $basename recycled. Inserting into geslib_log (cycle $nextCycle)", 'geslib');
+			$geslibApiDbLogManager->insertLogData( $basename, 'logged', count( file( $this->mainFolderPath . $filename ) ), $nextCycle );
 		}
+		// If status is 'logged' or 'queued', the file is already pending — do nothing
 	}
 
 	/**

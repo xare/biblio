@@ -71,7 +71,7 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 	 * insertAuthorsIntoQueue
 	 *
 	 * @param  array $batch
-	 * @return bool
+	 * @return void
 	 */
 	public function insertAuthorsIntoQueue( array $batch ): void {
 		global $wpdb;
@@ -254,11 +254,11 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 	public function processFromQueue( string $type ): bool {
 		
 		global $wpdb;
-		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Processing queue type: ' . $type, 'geslib');
+		$this->biblioApi->getLogger()->debug('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Processing queue type: ' . $type, 'geslib');
         $table_name = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
 		$preparedQuery1 = $wpdb->prepare("SELECT COUNT(*) FROM `$table_name` WHERE `type` = %s", $type);
 		$queue_count1 = $wpdb->get_var($preparedQuery1);
-		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Items in queue: ' . $queue_count1, 'geslib');
+		$this->biblioApi->getLogger()->debug('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Items in queue: ' . $queue_count1, 'geslib');
 		// If there are no items in the queue, return false
 		if($queue_count1 == 0) {
 			return false;
@@ -275,10 +275,10 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 			'store_categories' => 'processBatchStoreCategories',
 		*/
 		$methodName = 'processBatch' . str_replace('_', '', ucwords($type, '_'));
-		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Mapped method name: ' . $methodName, 'geslib');
+		$this->biblioApi->getLogger()->debug('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Mapped method name: ' . $methodName, 'geslib');
 		// Check if the provided type is valid
 		if (method_exists($this, $methodName)) {
-			$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Running: ' . $methodName);
+			$this->biblioApi->getLogger()->debug('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Running: ' . $methodName);
 			do {
 				// Call the corresponding processing function based on the type
 				$this->$methodName(3000);
@@ -291,11 +291,17 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 			return true;
 		} else {
 			// Optionally handle the case where the type is not recognized
-			$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Unrecognized queue type: ' . $type);
+			$this->biblioApi->getLogger()->error('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, var_export('Unrecognized queue type: ' . $type, true), 'geslib' );
 			return false;
 		}
 	}
 
+	/**
+	 * processBatchBuildContent
+	 *
+	 * @param  int $batchSize
+	 * @return void
+	 */
 	public function processBatchBuildContent( int $batchSize = 100 ) {
 		global $wpdb;
 		$table_name = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
@@ -371,7 +377,7 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 		$geslibApiDbManager = new GeslibApiDbManager();
 		$geslibApiDbTaxonomyManager = new GeslibApiDbTaxonomyManager();
 		$queue = $this->getBatchFromQueue( (int) $batchSize, 'store_autors' );
-		
+		$this->biblioApi->getLogger()->debug('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Processing batch of store_autors with batch size: ' . count($queue), 'geslib' );
 		foreach ( $queue as $task ) {
 			if ( $task->action == 'B') {
 				$geslibApiDbManager->deleteTerm( (int) $task->geslib_id, 'autors' );
@@ -414,11 +420,11 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 		$queue = $this->getBatchFromQueue( (int) $batchSize, 'store_categories' );
 		foreach ( $queue as $task ) {
 			if ( $task->action == 'B') {
-				$geslibApiDbManager->deleteTerm( (int) $task->geslib_id, "product_cat" );
+				$geslibApiDbManager->deleteTerm( $task->geslib_id, "product_cat" );
 			} else {
-				$geslibApiDbTaxonomyManager->storeCategory( (int) $task->geslib_id, $task->data );
+				$geslibApiDbTaxonomyManager->storeCategory( $task->geslib_id, $task->data );
 			}
-			$this->deleteItemFromQueue( (string) $task->type, (int) $task->log_id, (int) $task->geslib_id );
+			$this->deleteItemFromQueue( (string) $task->type, (int) $task->log_id, $task->geslib_id );
 		}
 	}
 

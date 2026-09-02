@@ -173,4 +173,22 @@ class CustomTaxonomyController extends BaseController
 			register_taxonomy( $taxonomy['rewrite']['slug'], $objects, $taxonomy );
 		}
 	}
+
+	/**
+	 * Ensure taxonomies are loaded and registered
+	 * This method can be called from anywhere to ensure custom taxonomies are available
+	 * Useful for WP-Cron where init hook may not have fired
+	 *
+	 * @return void
+	 */
+	public function ensureTaxonomiesLoaded() {
+		// Store taxonomies if not already stored
+		if ( empty( $this->taxonomies ) ) {
+			$this->storeCustomTaxonomies();
+		}
+		// Register them if not already registered
+		if ( ! empty( $this->taxonomies ) ) {
+			$this->registerCustomTaxonomy();
+		}
+	}
 }

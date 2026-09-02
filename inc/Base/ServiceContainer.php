@@ -124,4 +124,27 @@ class ServiceContainer
         $this->services = [];
         $this->instances = [];
     }
+
+    /**
+     * Get a service by class name (creates singleton if not exists)
+     *
+     * @param string $className The class name of the service.
+     *
+     * @return mixed
+     */
+    public function get(string $className)
+    {
+        $key = $className;
+
+        if (isset($this->instances[$key])) {
+            return $this->instances[$key];
+        }
+
+        if (class_exists($className)) {
+            $this->instances[$key] = new $className();
+            return $this->instances[$key];
+        }
+
+        throw new \RuntimeException("Class '$className' does not exist.");
+    }
 }

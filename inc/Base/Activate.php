@@ -47,6 +47,8 @@ class Activate {
             id mediumint(9) NOT NULL AUTO_INCREMENT,
             `log_id` mediumint(9) unsigned,
             `isbn` varchar(255) NOT NULL,
+            `booktitle` varchar(255),
+            `book_id` mediumint(9),
             `path` varchar(255) NOT NULL,
             `url_origin` varchar(255) NOT NULL,
             `url_target` varchar(255) NOT NULL,
@@ -62,5 +64,14 @@ class Activate {
 
         dbDelta( $covers_log_sql );
         dbDelta( $covers_lines_sql );
+
+        // Add missing columns to existing covers_lines table if they don't exist
+        $columns = $wpdb->get_col( "DESC $covers_lines_table_name", 0 );
+        if ( ! in_array( 'booktitle', $columns ) ) {
+            $wpdb->query( "ALTER TABLE $covers_lines_table_name ADD COLUMN `booktitle` varchar(255)" );
+        }
+        if ( ! in_array( 'book_id', $columns ) ) {
+            $wpdb->query( "ALTER TABLE $covers_lines_table_name ADD COLUMN `book_id` mediumint(9)" );
+        }
     }
 }

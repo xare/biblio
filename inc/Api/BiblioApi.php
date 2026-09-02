@@ -1,14 +1,22 @@
 <?php
 namespace Inc\Biblio\Api;
 
+use Inc\Biblio\Api\FileLogger;
+
 /**
  * Biblio API
  *
  * Provides utility methods for the Biblio plugin.
  *
- * @deprecated Use LoggerInterface implementations instead of debug_log method.
  */
 class BiblioApi {
+    /**
+     * Shared logger instance
+     *
+     * @var LoggerInterface|null
+     */
+    private static ?LoggerInterface $shared_logger = null;
+
     /**
      * Logger instance
      *
@@ -66,5 +74,19 @@ class BiblioApi {
     public function setLogger(LoggerInterface $logger): void
     {
         $this->logger = $logger;
+    }
+
+    /**
+     * Get a shared logger instance (singleton)
+     *
+     * @return LoggerInterface
+     */
+    public static function getSharedLogger(): LoggerInterface
+    {
+        if (self::$shared_logger === null) {
+            $logs_dir = defined('ABSPATH') ? ABSPATH . 'wp-content/plugins/biblio/logs' : '/var/www/html/wp-content/plugins/biblio/logs';
+            self::$shared_logger = new FileLogger($logs_dir);
+        }
+        return self::$shared_logger;
     }
 }

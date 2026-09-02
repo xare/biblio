@@ -95,40 +95,42 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 		$term = term_exists( $term_name, 'autors' ); // check if term already exists
 		if ( 0 !== $term && null !== $term ) {
 			// If the term exists, update it
-			$term_data = wp_update_term( $term['term_id'], 'autors', [
-				'name' => $term_name,
-				'slug' => $term_slug,
-				'description' => $term_description,
-			]);
-    	} else {
-        	// Otherwise, insert a new term
-        	$term_data = wp_insert_term(
-							$term_name,   // the term
-							'autors', // the taxonomy
-							[
-								'description'=> $term_description,
-								'slug' => $term_slug,
-							]);
-    	}
-
-		add_term_meta($term_data['term_id'],'autor_geslib_id', $author->geslib_id);
-
-        // Check for errors
-        if ( is_wp_error($term_data) ) {
-            $this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $term_data->get_error_message(), 'geslib' );
-			return false;
-        }
-		return get_term($term_data['term_id'], 'autors');
+			$term_data = ( 0 !== $term && null !== $term )
+				? wp_update_term(
+					$term['term_id'],
+					'autors', 
+					[
+						'name' => $term_name,
+						'slug' => $term_slug,
+						'description' => $term_description,
+					]
+				)
+				: wp_insert_term(
+					$term_name,   // the term
+					'autors', // the taxonomy
+					[
+						'description'=> $term_description,
+						'slug' => $term_slug,
+					]
+				);
+			add_term_meta($term_data['term_id'],'autor_geslib_id', $author->geslib_id);
+			if ( is_wp_error($term_data) ) {
+            	$this->biblioApi->getLogger()->error('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, var_export($term_data->get_error_message(), true), 'geslib');
+				return false;
+        	}
+			return get_term($term_data['term_id'], 'autors');
+		}
+        return false;
     }
 
     /**
      * storeCategory
      *
-     * @param  int $geslib_id
+     * @param  string $geslib_id
      * @param  mixed $content
      * @return mixed
      */
-    public function storeCategory( int $geslib_id, $content): mixed{
+    public function storeCategory( string $geslib_id, $content): mixed{
 		$product_category = json_decode( $content );
 		$geslibApiSanitize = new GeslibApiSanitize;
 		$term_name = $geslibApiSanitize->utf8_encode($product_category->name);
@@ -215,7 +217,6 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
      */
     public function storeAuthor( int $geslib_id, string $content): mixed {
 		$author = json_decode( $content );
-		var_dump($author);
 		if ( $author === null ) return false;
 		$geslibApiSanitize = new GeslibApiSanitize;
 		$term_name = $geslibApiSanitize->utf8_encode($author->name);
@@ -223,6 +224,7 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 		$term_slug = $this->_create_slug( $term_name );
 		$term_description = $term_name;
 		$term = term_exists( $term_name, 'autors' ); // check if term already exists
+		$this->biblioApi->getLogger()->debug('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Storing author: ' . $term_name, 'geslib' );
 		if ( 0 !== $term && null !== $term ) {
 			// If the term exists, update it
 			try {
@@ -233,13 +235,13 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 				]);
 				
 				if (is_wp_error($term_data)) {
-					$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $term_data->get_error_message(), 'geslib' );
+					$this->biblioApi->getLogger()->error('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, var_export($term_data->get_error_message(), true), 'geslib' );
 					return false;
 				}
 				$term_meta = update_term_meta($term_data['term_id'], 'author_geslib_id', $geslib_id);
                 return true;
 			} catch (\Exception $exception) {
-				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage() );
+				$this->biblioApi->getLogger()->error('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, var_export($exception->getMessage(), true), 'geslib' );
 				return false;
 			}
     	} else {
@@ -251,15 +253,16 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 								'description'=> $term_description,
 								'slug' => $term_slug
 							]);
-			var_dump($term_data);
+			
+			// Check for errors BEFORE accessing term_id
+			if ( is_wp_error($term_data) ) {
+				$this->biblioApi->getLogger()->error('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, var_export($term_data->get_error_message(), true), 'geslib' );
+				return false;
+			}
+			
+			$this->biblioApi->getLogger()->debug('INFO Author inserted '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Author term created with ID: ' . $term_data['term_id'], 'geslib' );
 			add_term_meta($term_data['term_id'],'author_geslib_id', $geslib_id);
     	}
-        // Check for errors
-        if ( is_wp_error($term_data) ) {
-            // Handle the error here
-			$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $term_data->get_error_message(), 'geslib' );
-			return false;
-        }
 		return get_term($term_data['term_id'], 'autors');
 	}
 
@@ -288,13 +291,13 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 					'description' => $term_description,
 				]);
 				if (is_wp_error($term_data)) {
-					$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $term_data->get_error_message(), 'geslib' );
+					$this->biblioApi->getLogger()->error('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, var_export($term_data->get_error_message(), true), 'geslib' );
 					return false;
 				}
-				$term_meta = update_term_meta($term_data['term_id'], 'author_geslib_id', $geslib_id);
+				$term_meta = update_term_meta($term_data['term_id'], 'coleccion_geslib_id', $geslib_id);
                 return true;
 			} catch (\Exception $exception) {
-				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'geslib' );
+				$this->biblioApi->getLogger()->error('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, var_export($exception->getMessage(), true), 'geslib' );
 				return false;
 			}
     	} else {
@@ -309,13 +312,13 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 								]);
 				if ( is_wp_error($term_data) ) {
 					// Handle the error here
-					$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $term_data->get_error_message(), 'geslib' );
+					$this->biblioApi->getLogger()->error('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, var_export($term_data->get_error_message(), true), 'geslib' );
 					return false;
 				}
 				add_term_meta($term_data['term_id'],'coleccion_geslib_id', $geslib_id);
 				return true;
 			} catch(Exception $exception) {
-				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'geslib' );
+				$this->biblioApi->getLogger()->error('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, var_export($exception->getMessage(), true), 'geslib' );
 				return false;
 			}
     	}
@@ -356,14 +359,14 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 			// Check for errors
 			if (is_wp_error($result)) {
 				// Handle error here
-				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $result->get_error_message(), 'geslib' );
+				$this->biblioApi->getLogger()->error('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, var_export($result->get_error_message(), true), 'geslib' );
 				return false;
 			}
 
 			// Return the created category
 			return get_term($result['term_id'], 'product_cat');
 		} else {
-			$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Category already exists", 'geslib' );
+			$this->biblioApi->getLogger()->error('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, var_export("Category already exists", true), 'geslib' );
 			return false;
 		}
 	}

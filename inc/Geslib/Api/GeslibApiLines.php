@@ -5,173 +5,20 @@ namespace Inc\Geslib\Api;
 use Inc\Biblio\Api\BiblioApi;
 use Inc\Geslib\Api\GeslibApiDbLinesManager;
 use Inc\Geslib\Api\GeslibApiDbManager;
+use Inc\Geslib\Config\LineTypes;
 use WP_CLI;
 
 class GeslibApiLines {
-	static $productDeleteKeys = [
-		"type",
-		"action",
-		"geslib_id"
-	];
-	static $authorDeleteKeys = [
-			"type",
-			"action",
-			"geslib_id"
-	];
-	static array $editorialDeleteKeys = [
-			"type",
-			"action",
-			"geslib_id"
-	];
-	static array $categoriaDeleteKeys = [
-			"type",
-			"action",
-			"geslib_id"
-	];
-	static array $productKeys = [
-		"type",
-		"action",
-		"geslib_id",
-		"description",
-		"author",
-		"pvp_ptas",
-		"isbn",
-		"ean",
-		"num_paginas",
-		"num_edicion",
-		"origen_edicion",
-		"fecha_edicion",
-		"fecha_reedicion",
-		"año_primera_edicion",
-		"año_ultima_edicion",
-		"ubicacion",
-		"stock",
-		"materia",
-		"fecha_alta",
-		"fecha_novedad",
-		"Idioma",
-		"formato_encuadernacion",
-		"traductor",
-		"ilustrador",
-		"colección",
-		"numero_coleccion",
-		"subtitulo",
-		"estado",
-		"tmr",
-		"pvp",
-		"tipo_de_articulo",
-		"clasificacion",
-		"editorial",
-		"pvp_sin_iva",
-		"num_ilustraciones",
-		"peso",
-		"ancho",
-		"alto",
-		"fecha_aparicion",
-		"descripcion_externa",
-		"palabras_asociadas",
-		"ubicacion_alternativa",
-		"valor_iva",
-		"valoracion",
-		"calidad_literaria",
-		"precio_referencia",
-		"cdu",
-		"en_blanco",
-		"libre_1",
-		"libre_2",
-		"premiado",
-		"pod",
-		"distribuidor_pod",
-		"codigo_old",
-		"talla",
-		"color",
-		"idioma_original",
-		"titulo_original",
-		"pack",
-		"importe_canon",
-		"unidades_compra",
-		"descuento_maximo"
-	];
-	static array $editorialKeys = [
-		"type",
-		"action",
-		"geslib_id",
-		"name",
-		"name_short",
-		"country",
-		"url",
-		""
-	];
-	static array $coleccionKeys = [
-		"type",
-		"action",
-		"editorial_geslib_id",
-		"geslib_id",
-		"name",
-	];
-	static array $categoriaKeys = [
-		"type",
-		"action",
-		"geslib_id",
-		"name",
-		"",
-		""
-	];
-	static array $authorKeys = [
-		"type",
-		"action",
-		"geslib_id",
-		"name"
-	];
-	static array $lineTypes = [
-		'1L', // Editoriales
-		'1A', // Compañías discográficas
-		//"1P", // Familias de papelería
-		//"1R", // Publicaciones de prensa
-		//"2", // Colecciones editoriales
-		"3", // Materias
-		"GP4", // Artículos
-		"EB", // eBooks (igual que los libros)
-		"IEB", // Información propia del eBook
-		"5", // Materias asociadas a los artículos
-		//"BIC", // Materias IBIC asociadas a los artículos
-		"6", // Referencias de la librería
-		"6E", // Referencias del editor
-		"6I", // Índice del libro
-		"6T", // Referencias de la librería (traducidas)
-		//"6TE", // Referencias del editor (traducidas)
-		"6IT", // Índice del libro (traducido)
-		"LA", // Autores normalizados asociados a un artículo
-		//"7", // Formatos de encuadernación
-		//"8", // Idiomas
-		//"9", // Palabras vacías
-		"B", // Stock
-		//"B2", // Stock por centros
-		//"E", // Estados de artículos
-		//"CLI", // Clientes
-		"AUT", // Autores
-		//"AUTBIO", // Biografías de Autores
-		//"I", // Indicador de carga inicial. Cuando este carácter aparece en la primera línea, indica que se están enviando todos los datos y de todas las entidades
-		//"IPC", // Incidencias en pedidos de clientes
-		//"P", // Promociones de artículos (globales a todos los centros)
-		//"PROCEN", // Promociones de artículos por centros
-		//"PC", // Pedidos de clientes
-		//"VTA", // Ventas
-		//"PAIS", // Países
-		//"CLOTE", // Lotes de artículos: Cabecera
-		//"LLOTE", // Lotes de artículos: Líneas
-		//"TIPART", // Tipos de artículos
-		//"CLASIF", // Clasificaciones de artículos
-		//"ATRA", // Traducciones asociadas a los artículos
-		//"ARTATR",
-		//"CA", // Claves alternativas asociadas a los artículos
-		//"CLOTCLI", // Lotes de clientes: Cabecera
-		//"LLOTCLI", // Lotes de clientes: Líneas
-		//"PROFES", // Profesiones
-		//"PROVIN", // Provincias
-		//"CAGRDTV", // Agrupaciones de descuentos de ventas: Cabecera
-		//"LAGRDTV" // Agrupaciones de descuentos de ventas: Líneas
-	];
+	static $productDeleteKeys = LineTypes::PRODUCT_DELETE_KEYS;
+	static $authorDeleteKeys = LineTypes::AUTHOR_DELETE_KEYS;
+	static array $editorialDeleteKeys = LineTypes::EDITORIAL_DELETE_KEYS;
+	static array $categoriaDeleteKeys = LineTypes::CATEGORIA_DELETE_KEYS;
+	static array $productKeys = LineTypes::PRODUCT_KEYS;
+	static array $editorialKeys = LineTypes::EDITORIAL_KEYS;
+	static array $coleccionKeys = LineTypes::COLECCION_KEYS;
+	static array $categoriaKeys = LineTypes::CATEGORIA_KEYS;
+	static array $authorKeys = LineTypes::AUTHOR_KEYS;
+	static array $lineTypes = LineTypes::LINE_TYPES;
 	private $db;
 	private string $mainFolderPath;
 	private $geslibSettings;
@@ -200,7 +47,7 @@ class GeslibApiLines {
 		// 1. Read the log table
 		$filename = $geslibApiDbLogManager->getGeslibLoggedFilename( $log_id );
 		$fullPath = $this->mainFolderPath . $filename;
-		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Full path: ' . $fullPath , 'geslib');
+		$this->biblioApi->getLogger()->debug('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Full path: ' . $fullPath , 'geslib');
 
 		// 2. Read the file and store in lines table
 		if ( pathinfo( $fullPath, PATHINFO_EXTENSION ) === 'zip' ) {
@@ -213,7 +60,7 @@ class GeslibApiLines {
 		$batch_size = 300; // Choose a reasonable batch size
 		$batch = [];
 		$i = 0;
-		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, count( $lines ) .' lines', 'geslib');
+		$this->biblioApi->getLogger()->debug('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, count( $lines ) .' lines', 'geslib');
 		foreach ($lines as $line) {
 			$line = $this->sanitizeLine( $line );
 			$line_array = explode('|', $line);
@@ -226,10 +73,10 @@ class GeslibApiLines {
 				|| ($line_array[0] == 'B' 
 					&& !$geslibApiDbProductsManager->check_product_stock_by_geslib_id($line_array[1], $line_array[2]))
 			) {		
-				$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $line , 'geslib');
+				$this->biblioApi->getLogger()->debug('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Excluded line: " . $line , 'geslib');
 				continue;
 			}
-			$index = ( in_array( $line_array[0],['6E', '6TE', 'AUTBIO', 'B','LA'] ) ) ? 1 : 2;
+			$index = ( in_array( $line_array[0], ['6E', '6TE', 'AUTBIO', 'B','LA'] ) ) ? 1 : 2;
 			$entity = match ( $line_array[0] ) {
 				'1L' => 'editorials',
 				'GP4' => 'product',
@@ -270,7 +117,7 @@ class GeslibApiLines {
     	return $log_id;
 	}
 
-	public function sanitizeLine($line) {
+	public function sanitizeLine(string $line):string {
 		// Split the line into its components
 		$line_items = explode('|', $line);
 
@@ -362,10 +209,6 @@ class GeslibApiLines {
 	 * @param  int $log_id
 	 * @return void
 	 */
-	private function process6TE( array $data, int $log_id ) {
-		// Procesa las líneas 6TE aquí
-	}
-
 	/**
 	 * process1L
 	 * EDITORIAL
@@ -480,21 +323,7 @@ class GeslibApiLines {
 		$geslibApiDbLinesManager->insertData( $content_array, $data[1], $log_id, 'autors' );
 	}
 
-	/**
-	 * processAUTBIO
-	 * //AUTBIO|3|Realiz� estudios de econom�a, ciencias pol�ticas y sociolog�a. Doctor en Ciencias Pol�ticas y profesor titular en la Facultad de Ciencias Pol�ticas y Sociolog�a de la Universidad Complutense de Madrid, hizo sus estudios de posgrado en la Universidad de Heidelberg (Alemania). En septiembre de 2010 fue ponente central en la conmemoraci�n del D�a Internacional de la Democracia en la Asamblea General de las Naciones Unidas en Nueva York. Dirige el Departamento de Gobierno, Pol�ticas P�blicas y Ciudadan�a Global del Instituto Complutense de Estudios Internacionales y pertenece al consejo cient�fico de ATTAC.|
-	 *
-	 * @param  mixed $data
-	 * @param  int $log_id
-	 * @return void
-	 */
-	private function processAUTBIO( $data, int $log_id ) {
-		$content_array['biografia'] = $data[2];
-		$content_array = $this->geslibApiSanitize->sanitize_content_array($content_array);
-		$this->mergeContent( $data[1], $content_array, 'autors');
-	}
-
-	/**
+/**
 	 * processLA
 	 * Add an author to to a product
 	 * “LA”|Código de producto|código del autor (varchar(12))| Tipo de autor (A Autor, I Ilustrador, IC Ilustrador contraportada, IP ilustrador Portada, T traductor) | Orden

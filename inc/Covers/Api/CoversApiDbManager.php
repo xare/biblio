@@ -5,11 +5,13 @@ namespace Inc\Covers\Api;
 require_once(ABSPATH . 'wp-admin/includes/image.php');
 
 use Inc\Biblio\Api\BiblioApi;
+use Inc\Biblio\Api\TableConstants;
 use WP_Query;
 
 class CoversApiDbManager {
-    const COVERS_LOG_TABLE = 'covers_log';
-    const COVERS_LINES_TABLE = 'covers_lines';
+    const COVERS_LOG_TABLE = TableConstants::COVERS_LOG_TABLE;
+    const COVERS_LINES_TABLE = TableConstants::COVERS_LINES_TABLE;
+    const COVERS_LOGGER_TABLE = TableConstants::COVERS_LOGGER_TABLE;
 
     static $coversLogKeys = [
 		'start_date', // date
@@ -22,6 +24,8 @@ class CoversApiDbManager {
     static $coversLinesKeys = [
         'log_id', // int relation oneToMany with covers_log
         'isbn',    // string
+        'booktitle', // string
+        'book_id', // int
         'path',    // string
         'url_origin', // string
         'url_target', // string
@@ -151,13 +155,23 @@ class CoversApiDbManager {
 			),
 		);
     	$products = get_posts($args);
+        $this->biblioApi->getLogger()->debug(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "File ID: " . $file_id . "." , 'missingcovers');
+        $this->biblioApi->getLogger()->debug(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Nº of products: " . count($products) . "." , 'missingcovers');
 		foreach ($products as $product) {
 			$product_id = $product->ID;
+            
 			// Check if a thumbnail is already set for the product
 			if (get_post_thumbnail_id($product_id)) {
+                $this->biblioApi->getLogger()->debug("", "Product ID: " . $product->ID . " already has a featured image. Skipping." , 'missingcovers');
 				continue; // Skip setting the featured image if already set
 			}
-			set_post_thumbnail($product_id, $file_id);
+            $this->biblioApi->getLogger()->debug("", "Setting image for " . $product->post_title . " - Product ID:" . $product->ID . "With file ID " . $file_id, 'missingcovers');
+			try {
+                $isset = set_post_thumbnail($product_id, $file_id);
+                $this->biblioApi->getLogger()->debug("", "Set as post thumbnail:" . var_export($isset, true), 'missingcovers');
+            } catch(\Exception $e) {
+                $this->biblioApi->getLogger()->debug("ERROR", "ERROR at SETTING AN IMAGE: " . $e->getMessage() . ". Failed to set image for " . $product->post_title . " - Product ID:" . $product->ID, 'missingcovers');
+            }
 		}
 	}
 
@@ -268,9 +282,9 @@ class CoversApiDbManager {
      * isAttachment
      *
      * @param  string $filename
-     * @return mixed
+     * @return array
      */
-    public function isAttachment( string $filename ): mixed {
+    public function isAttachment( string $filename ): array {
         $attachments = get_posts([
 			'post_type' => 'attachment',
 			'post_status' => 'inherit',
@@ -279,7 +293,7 @@ class CoversApiDbManager {
 			'posts_per_page' => 1,
 		]);
 
-        return ( !empty( $attachments ) )? $attachments : false;
+        return !empty($attachments) ? $attachments : [];
     }
     /**
      * Register product post meta for cover source URL.
@@ -310,6 +324,7 @@ class CoversApiDbManager {
      */
     public function save_cover_source_by_product_id(int $product_id, string $url): bool {
         if ($product_id <= 0 || empty($url)) {
+            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Invalid product ID or URL. Product ID: $product_id, URL: $url", 'covers');
             return false;
         }
         return (bool) update_post_meta($product_id, 'covers_url', esc_url_raw($url));

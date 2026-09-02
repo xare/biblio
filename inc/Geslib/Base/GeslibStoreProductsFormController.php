@@ -210,6 +210,8 @@ class GeslibStoreProductsFormController extends BaseController
         $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
         $biblioApi = new BiblioApi;
 
+        $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'AJAX ajaxHandleProcessAll started', 'geslib');
+
         $geslibApiReadFiles->readFolder();
         
         // Check if there are queues of type 'store_products' and execute them
@@ -250,6 +252,7 @@ class GeslibStoreProductsFormController extends BaseController
             $geslibApiDbLogManager->setLogStatus( $log_id, 'processed');
             $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Set log id: '. $log_id . ' to processed.', 'geslib');
         }
+        $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'About to call wp_send_json_success', 'geslib');
         update_option('geslib_admin_notice', 'Procesando todos los archivos.');
         wp_send_json_success(['message' => 'Procesando todos los archivos.']);
     }

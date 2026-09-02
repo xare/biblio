@@ -4,28 +4,14 @@ namespace Inc\Geslib\Api;
 
 use Exception;
 use Inc\Biblio\Api\BiblioApi;
+use Inc\Biblio\Api\TableConstants;
 use Inc\Geslib\Api\GeslibApiSanitize;
 use WC_Product_Simple;
 use WP_Query;
 
 class GeslibApiDbManager {
-	/**
-	 * Name of the database table used to store Geslib lines.
-	 *
-	 * @var string
-	 */
 	const GESLIB_LINES_TABLE = 'geslib_lines';
-	/**
-	 * Name of the database table used for logging Geslib API operations.
-	 *
-	 * @var string
-	 */
 	const GESLIB_LOG_TABLE = 'geslib_log';
-	/**
-	 * Name of the database table used for storing Geslib queue data.
-	 *
-	 * @var string
-	 */
 	const GESLIB_QUEUES_TABLE = 'geslib_queues';
 	/**
 	 * Static array containing the keys used for Geslib lines.
@@ -49,6 +35,7 @@ class GeslibApiDbManager {
 	 */
 	static $geslibLogKeys = [
 		'filename', // string inter000
+		'cycle', // int cycle number for recycled filenames
 		'start_date', // date
 		'end_date', // date
 		'status', // string waiting | enqueued | processed

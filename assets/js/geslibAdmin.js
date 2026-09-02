@@ -37,6 +37,10 @@ async function makeAjaxRequest( action, additionalData = null ) {
         credentials: "same-origin",
         body: formData
     });
+    
+    // Clone the response so we can read it multiple times if needed
+    const responseClone = response.clone();
+    
     try {
         const jsonResponse = await response.json();
         console.info( response );
@@ -48,7 +52,14 @@ async function makeAjaxRequest( action, additionalData = null ) {
         }
     } catch ( error ) {
         console.error( "Error parsing JSON: ", error );
-        console.error( "Raw response: ", await response.text() );
+        console.error( "HTTP Status: ", response.status );
+        console.error( "Content-Type header: ", response.headers.get('content-type') );
+        try {
+            const textResponse = await responseClone.text();
+            console.error( "Raw response text: ", textResponse.substring(0, 500) );
+        } catch (textError) {
+            console.error( "Could not read response text: ", textError );
+        }
     }
 }
 

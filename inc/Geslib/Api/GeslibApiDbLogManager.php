@@ -20,10 +20,11 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 	 * @param  int $linesCount
 	 * @return bool
 	 */
-	public function insertLogData( string $filename, string $status, int $linesCount ): bool {
+	public function insertLogData( string $filename, string $status, int $linesCount, int $cycle = 1 ): bool {
 		global $wpdb;
 		$geslibLogValues = [
 			$filename,
+			$cycle,
 			date('Y-m-d H:i:s'),
 			null,
 			$status,
@@ -32,9 +33,9 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 		$insertArray = array_combine(self::$geslibLogKeys, $geslibLogValues);
 		try {
 			$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Inserting the file $filename into geslib_log table", 'geslib');
-			$wpdb->insert($wpdb->prefix . self::GESLIB_LOG_TABLE,
-						$insertArray,
-						['%s', '%s', '%s', '%s', '%d']);
+		$wpdb->insert($wpdb->prefix . self::GESLIB_LOG_TABLE,
+					$insertArray,
+					['%s', '%d', '%s', '%s', '%s', '%d']);
 			return true;
 		} catch (\Exception $e) {
 			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "This file has not been properly inserted into the database due to an error: ".$e->getMessage(), 'geslib');
@@ -67,6 +68,58 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 			return false;
 		}
 
+    }
+
+    /**
+     * getNextCycle
+     * Returns the next cycle number for a given filename.
+     * Called by GeslibApiReadFiles::_insert2geslibLog
+     *
+     * @param string $filename
+     * @return int
+     */
+    public function getNextCycle( string $filename ): int {
+        global $wpdb;
+        $table_name = $wpdb->prefix . self::GESLIB_LOG_TABLE;
+        $query = $wpdb->prepare(
+            "SELECT COALESCE(MAX(cycle), 0) + 1
+             FROM {$table_name}
+             WHERE filename = %s",
+            $filename
+        );
+        try {
+            return (int) $wpdb->get_var( $query );
+        } catch(\Exception $e) {
+            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Error getting next cycle: ".$e->getMessage(), 'geslib');
+            return 1;
+        }
+    }
+
+    /**
+     * getLastStatusForFilename
+     * Returns the status of the most recent record for a given filename.
+     * Called by GeslibApiReadFiles::_insert2geslibLog
+     *
+     * @param string $filename
+     * @return string|null
+     */
+    public function getLastStatusForFilename( string $filename ): ?string {
+        global $wpdb;
+        $table_name = $wpdb->prefix . self::GESLIB_LOG_TABLE;
+        $query = $wpdb->prepare(
+            "SELECT status
+             FROM {$table_name}
+             WHERE filename = %s
+             ORDER BY cycle DESC
+             LIMIT 1",
+            $filename
+        );
+        try {
+            return $wpdb->get_var( $query );
+        } catch(\Exception $e) {
+            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Error getting last status: ".$e->getMessage(), 'geslib');
+            return null;
+        }
     }
 
     /**
@@ -112,7 +165,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 									id
 								FROM {$table_name}
 								WHERE status=%s
-								ORDER BY id ASC
+								ORDER BY cycle ASC, id ASC
 								LIMIT %d",
 								['logged', 1]);
 		try {

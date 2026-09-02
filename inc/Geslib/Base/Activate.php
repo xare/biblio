@@ -26,11 +26,14 @@ namespace Inc\Geslib\Base;
     $log_sql = "CREATE TABLE IF NOT EXISTS $log_table_name (
       id mediumint(9) unsigned NOT NULL AUTO_INCREMENT,
       filename text NOT NULL,
+      cycle int(11) unsigned NOT NULL DEFAULT 1,
       start_date datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
       end_date datetime DEFAULT NULL,
       status text NOT NULL,
       lines_count int(11) NOT NULL,
-      PRIMARY KEY (id)
+      PRIMARY KEY (id),
+      KEY idx_filename (filename(191)),
+      KEY idx_status (status(50))
     ) $charset_collate;";
 
     $queue_sql = "CREATE TABLE IF NOT EXISTS $queue_table_name (
@@ -46,5 +49,17 @@ namespace Inc\Geslib\Base;
       require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
       dbDelta( $log_sql );
       dbDelta( $queue_sql );
+
+      // Migration: add 'cycle' column to existing geslib_log tables
+      $column_exists = $wpdb->get_var(
+        "SELECT COUNT(*)
+         FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = '" . DB_NAME . "'
+           AND TABLE_NAME = '{$log_table_name}'
+           AND COLUMN_NAME = 'cycle'"
+      );
+      if ( !$column_exists ) {
+        $wpdb->query( "ALTER TABLE {$log_table_name} ADD COLUMN cycle int(11) unsigned NOT NULL DEFAULT 1 AFTER filename" );
+      }
   }
  }
