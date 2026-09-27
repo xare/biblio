@@ -54,37 +54,43 @@ class GeslibProcessAllCommand {
         $geslibApiStoreData = new GeslibApiStoreData;
         $geslibApiReadFiles = new GeslibApiReadFiles;
         $geslibApiReadFiles->readFolder();
+
         while ( $geslibApiDbLogManager->checkLoggedStatus() ) {
             $log_id = $geslibApiDbLogManager->getGeslibLoggedId();
-            if ( !$geslibApiDbLogManager->isQueued() ){
-                $geslibApiDbLogManager->setLogStatus( $log_id, 'queued' );
-            } else {
-                $geslibApiDbQueueManager->deleteItemsFromQueue( 'store_lines' );
+            if ( !$log_id ) {
+                WP_CLI::line( 'No valid log_id found. Stopping.' );
+                break;
             }
-            WP_CLI::line( 'Enviamos las lineas a la cola de proceso. ');
-            $stored_lines = $geslibApiLines->storeToLines($log_id);
+            $geslibApiDbLogManager->setLogStatus( $log_id, 'queued' );
+
+            // Skip re-parse if queue already has items for this log
+            if ( ! $geslibApiDbQueueManager->hasQueueItemsForLog( $log_id ) ) {
+                WP_CLI::line( "Log {$log_id}: parsing file and creating queue items." );
+                $geslibApiLines->storeToLines($log_id);
+            } else {
+                WP_CLI::line( "Log {$log_id}: resuming from existing queue items (skip re-parse)." );
+            }
             
-            WP_CLI::line( 'Procesamos las lineas de la cola en modo store_lines. ');
+            WP_CLI::line( "Log {$log_id}: processing store_lines queue." );
             $geslibApiDbQueueManager->processFromQueue( 'store_lines' );
             $geslibApiStoreData->storeAuthors();
             $geslibApiStoreData->storeEditorials();
-            WP_CLI::line( 'Enviamos los productos a la cola de proceso. ');
             $geslibApiDbProductsManager->storeProducts();
 
-            WP_CLI::line( 'Empezamos a procesar los productos y a guardarlos en la tienda. ');
+            WP_CLI::line( "Log {$log_id}: processing remaining queues." );
             $geslibApiDbQueueManager->processFromQueue( 'store_products' );
-
             $geslibApiDbQueueManager->processFromQueue( 'store_editorials' );
             $geslibApiDbQueueManager->processFromQueue( 'store_autors' );
             $geslibApiDbQueueManager->processFromQueue( 'store_categories' );
 
-            WP_CLI::line( 'Se ha terminado de procesar la cola store_products. ');
             $geslibApiDbLinesManager->truncateGeslibLines();
-
-            WP_CLI::line( 'Geslib Lines ha sido borrado. ');
             $geslibApiDbLogManager->setLogStatus( $log_id, 'processed');
-            WP_CLI::line( 'Archivo en geslib log marcado como procesado para log_id. '.$log_id);
+            $processedFilename = $geslibApiDbLogManager->getGeslibLoggedFilename( $log_id );
+            if ( $processedFilename ) {
+                $geslibApiReadFiles->moveToProcessed( $processedFilename );
+            }
+            WP_CLI::line( "Log {$log_id}: completed." );
         }
-        WP_CLI::line( 'The process is over. ');
+        WP_CLI::line( 'The process is over.' );
     }
 }

@@ -164,12 +164,13 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 		$query = $wpdb->prepare("SELECT
 									id
 								FROM {$table_name}
-								WHERE status=%s
+								WHERE status IN (%s, %s)
 								ORDER BY cycle ASC, id ASC
 								LIMIT %d",
-								['logged', 1]);
+								'logged', 'queued', 1);
 		try {
-			return (int) $wpdb->get_var($query);
+			$result = $wpdb->get_var($query);
+			return ( $result !== null ) ? (int) $result : false;
 		} catch(\Exception $e) {
 			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "This file has not been found into the database due to an error: ".$e->getMessage(), 'geslib');
 			return false;
@@ -221,11 +222,10 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 		$table_name = $wpdb->prefix . self::GESLIB_LOG_TABLE;
 		$sql = $wpdb->prepare( "SELECT COUNT(*)
 								FROM {$table_name}
-								WHERE status = %s
-								ORDER BY id=%s",
-								['logged', 'ASC'] );
+								WHERE status IN (%s, %s)",
+								'logged', 'queued' );
 		try {
-			return (bool) $wpdb->get_var( $sql ) > 0;
+			return (int) $wpdb->get_var( $sql ) > 0;
 		} catch(\Exception $e) {
 			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "This file has not been found into the database due to an error: ".$e->getMessage(), 'geslib');
 			return false;

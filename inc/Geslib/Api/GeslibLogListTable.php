@@ -103,6 +103,7 @@ class GeslibLogListTable extends WP_List_Table {
             'end_date' => 'End Date',
             'status' => 'Status',
             'lines_count' => 'Lines Count',
+            'cycle' => 'Cycle',
         ];
         return $columns;
     }
@@ -120,6 +121,7 @@ class GeslibLogListTable extends WP_List_Table {
             'end_date' => ['end_date', false],
             'status' => ['status', false],
             'lines_count' => ['lines_count', false],
+            'cycle' => ['cycle', false],
         ];
     }
 
@@ -132,6 +134,7 @@ class GeslibLogListTable extends WP_List_Table {
             'end_date' => $item[$column_name],
             'status' => $item[$column_name],
             'lines_count' => $item[$column_name],
+            'cycle' => $item[$column_name],
             default => 'no value',
         };
     }

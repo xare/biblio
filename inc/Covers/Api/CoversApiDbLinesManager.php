@@ -26,6 +26,8 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
 		$coversLinesValues = [
 			$log_id,
             $isbn,
+            '',        // booktitle — not available at insert time
+            0,         // book_id — not available at insert time
             $path,
             $url_origin,
             $url_target,
@@ -35,6 +37,10 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
             $attempts, // scanned_products
             $type, // dilve|cegal
 		];
+		if ( count( self::$coversLinesKeys ) !== count( $coversLinesValues ) ) {
+			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Key/value count mismatch: " . count( self::$coversLinesKeys ) . ' keys vs ' . count( $coversLinesValues ) . ' values', 'covers');
+			return false;
+		}
 		$insertArray = array_combine(self::$coversLinesKeys, $coversLinesValues);
 
         //check if the line already exists and then decide whether INSERT or UPDATE

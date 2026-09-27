@@ -21,6 +21,7 @@ class GeslibApiLines {
 	static array $lineTypes = LineTypes::LINE_TYPES;
 	private $db;
 	private string $mainFolderPath;
+	private string $processedFolderPath;
 	private $geslibSettings;
 	private $geslibApiSanitize;
 	private $biblioApi;
@@ -28,6 +29,7 @@ class GeslibApiLines {
 	public function __construct() {
 		$this->geslibSettings = get_option('geslib_settings');
 		$this->mainFolderPath = WP_CONTENT_DIR . "/uploads/".$this->geslibSettings['geslib_folder_index']."/";
+		$this->processedFolderPath = $this->mainFolderPath . 'processed/';
 		$this->db = new GeslibApiDbManager();
 		$this->geslibApiSanitize = new GeslibApiSanitize();
 		$this->biblioApi = new BiblioApi;
@@ -44,6 +46,12 @@ class GeslibApiLines {
 		$geslibApiDbLogManager = new GeslibApiDbLogManager;
 		$geslibApiDbQueueManager = new GeslibApiDbQueueManager;
 		$geslibApiDbProductsManager = new GeslibApiDbProductsManager;
+		$startTime = microtime(true);
+
+		// Pre-load ALL product stocks into memory for batch B-line filtering
+		$stockMap = $geslibApiDbProductsManager->loadStockMap();
+		$this->biblioApi->getLogger()->debug('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Pre-loaded stock map: ' . count($stockMap) . ' products', 'geslib');
+
 		// 1. Read the log table
 		$filename = $geslibApiDbLogManager->getGeslibLoggedFilename( $log_id );
 		$fullPath = $this->mainFolderPath . $filename;
@@ -55,12 +63,26 @@ class GeslibApiLines {
 			$filename = $geslibReadFile->unzipFile( $fullPath );
 		}
 
+		// Fallback: check processed/ folder if file was already moved
+		if ( ! file_exists( $fullPath ) && file_exists( $this->processedFolderPath . $filename ) ) {
+			$fullPath = $this->processedFolderPath . $filename;
+			$this->biblioApi->getLogger()->debug('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'File not in main folder, using processed/ fallback: ' . $fullPath, 'geslib');
+		}
+
+		if ( ! file_exists( $fullPath ) ) {
+			$this->biblioApi->getLogger()->debug('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "File not found in main or processed folder: {$fullPath}", 'geslib');
+			return $log_id;
+		}
+
 		$lines = file( $fullPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES );
 
-		$batch_size = 300; // Choose a reasonable batch size
+		$batch_size = 300;
 		$batch = [];
-		$i = 0;
-		$this->biblioApi->getLogger()->debug('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, count( $lines ) .' lines', 'geslib');
+		$included = 0;
+		$excluded = 0;
+		$excludedByType = [];
+		$totalLines = count( $lines );
+
 		foreach ($lines as $line) {
 			$line = $this->sanitizeLine( $line );
 			$line_array = explode('|', $line);
@@ -71,9 +93,11 @@ class GeslibApiLines {
 				|| $this->isInEditorials( $line ) 
 				|| $this->isInAutors( $line ) 
 				|| ($line_array[0] == 'B' 
-					&& !$geslibApiDbProductsManager->check_product_stock_by_geslib_id($line_array[1], $line_array[2]))
-			) {		
-				$this->biblioApi->getLogger()->debug('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Excluded line: " . $line , 'geslib');
+					&& !$geslibApiDbProductsManager->stockHasChanged($line_array[1], $line_array[2], $stockMap))
+			) {
+				$excluded++;
+				$type = $line_array[0] ?? 'unknown';
+				$excludedByType[$type] = ($excludedByType[$type] ?? 0) + 1;
 				continue;
 			}
 			$index = ( in_array( $line_array[0], ['6E', '6TE', 'AUTBIO', 'B','LA'] ) ) ? 1 : 2;
@@ -97,7 +121,7 @@ class GeslibApiLines {
 			$item = [
 				'log_id' => $log_id,
 				'geslib_id' => $line_array[$index],
-				'type' => 'store_lines',  // type to identify the task in processQueue
+				'type' => 'store_lines',
 				'entity' => $entity,
 				'action' => $action,
 				'data' => $line,
@@ -107,12 +131,26 @@ class GeslibApiLines {
 				$geslibApiDbQueueManager->insertLinesIntoQueue( $batch );
 				$batch = [];
 			}
-			$i++;
+			$included++;
 		}
 		// Don't forget the last batch
 		if ( !empty( $batch ) ) {
 			$geslibApiDbQueueManager->insertLinesIntoQueue( $batch );
 		}
+
+		// Per-file summary
+		$elapsed = round(microtime(true) - $startTime, 1);
+		$excludedSummary = '';
+		if (!empty($excludedByType)) {
+			arsort($excludedByType);
+			$parts = [];
+			foreach (array_slice($excludedByType, 0, 5, true) as $type => $count) {
+				$parts[] = "{$type}:{$count}";
+			}
+			$excludedSummary = ' (' . implode(', ', $parts) . ')';
+		}
+		$this->biblioApi->getLogger()->debug('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__,
+			"{$filename}: {$totalLines} lines — {$included} included, {$excluded} excluded{$excludedSummary} [{$elapsed}s]", 'geslib');
 
     	return $log_id;
 	}
@@ -146,8 +184,11 @@ class GeslibApiLines {
 		$geslibApiDbQueueManager = new GeslibApiDbQueueManager();
 		$data = explode( '|', $line ) ;
 		array_pop($data);
-		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Processing line: ' . $line , 'geslib');
-		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Data array: ' . print_r($data, true) , 'geslib');
+
+		if( defined('GESLIB_DEBUG_LINES') && GESLIB_DEBUG_LINES ) {
+			$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Processing line: ' . $line , 'geslib');
+		}
+
 		if( in_array($data[0], self::$lineTypes ) ) {
 			$function_name = 'process' . $data[0];
 			if ( method_exists( $this, $function_name ) ) {
@@ -231,7 +272,7 @@ class GeslibApiLines {
 		}
 		$content_array = array_combine($keys, $data);
 		$content_array = $this->geslibApiSanitize->sanitize_content_array( $content_array );
-		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Processing editorial: ' . print_r($content_array, true) , 'geslib');
+		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Editorial: ' . $data[1] . '|' . ($data[2] ?? '?') . '|' . ($data[3] ?? ''), 'geslib');
 		$geslibApiDbLinesManager->insertData( $content_array, $data[1], $log_id , 'editorial');
 	}
 
@@ -291,7 +332,6 @@ class GeslibApiLines {
 	private function process5( $data, $log_id ) {
 		$geslib_category_id = $data[1];
 		$geslib_product_id = $data[2];
-		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'geslib_category_id: ' . $geslib_category_id . ' geslib_product_id: ' . $geslib_product_id, 'geslib');
 		$content_array = [];
 		if($geslib_category_id !== 0 && $geslib_category_id != '') {
 			$content_array['categories'][$geslib_category_id] = $geslib_product_id;

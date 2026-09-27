@@ -5,6 +5,10 @@ package-lock.json
 **/vendor/
 dist/
 logs/
+*.csv
+*.code-workspace
+improvementproposal.md
+.atl/
 
 # PHPUnit
 coverage/

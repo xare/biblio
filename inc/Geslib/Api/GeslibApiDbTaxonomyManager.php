@@ -138,25 +138,20 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 		$term_description = $term_name;
 		if( !term_exists( $term_name, 'product_cat' )) {
 			// Create the category
-			// TODO: No asume bien contenidos con acentos y signos raros.
 			$result = wp_insert_term(
 				$term_name, // the term
 				'product_cat', // the taxonomy
 				[
 					'description' => 'Imported category',
 					'slug'        => $term_slug
-					// you can add other properties here as per your needs
 				]
 			);
-			add_term_meta($result['term_id'], 'category_geslib_id', $product_category->geslib_id);
-			$category_geslib_id = get_term_meta( $result['term_id'], 'category_geslib_id', true );
-
-			// Check for errors
+			// Check for errors BEFORE accessing term_id
 			if (is_wp_error($result)) {
-				// Handle error here
 				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $result->get_error_message(), 'geslib' );
 				return false;
 			}
+			add_term_meta($result['term_id'], 'category_geslib_id', $product_category->geslib_id);
 
 			// Return the created category
 			return get_term($result['term_id'], 'product_cat');
@@ -177,18 +172,17 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 		$term_description = $term_name;
 		$term = term_exists( $term_name, 'editorials' ); // check if term already exists
 		if ( 0 !== $term && null !== $term ) {
-			try{
-				// If the term exists, update it
-				$term_data = wp_update_term( $term['term_id'], 'editorials', [
-					'name' => $term_name,
-					'slug' => $term_slug,
-					'description' => $term_description,
-				]);
-				$this->biblioApi->debug_log('INFO Editorial updated '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, var_export( $term_data, true), 'geslib' );	
-			} catch (Exception $e) {
-					$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $e->getMessage(), 'geslib' );
-					return false;
+			// If the term exists, update it
+			$term_data = wp_update_term( $term['term_id'], 'editorials', [
+				'name' => $term_name,
+				'slug' => $term_slug,
+				'description' => $term_description,
+			]);
+			if ( is_wp_error( $term_data ) ) {
+				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $term_data->get_error_message(), 'geslib' );
+				return false;
 			}
+			$this->biblioApi->debug_log('INFO Editorial updated '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, var_export( $term_data, true), 'geslib' );
 			update_term_meta($term_data['term_id'], 'editorial_geslib_id', $geslib_id);
     	} else {
         	// Otherwise, insert a new term
@@ -199,13 +193,12 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 								'description'=> $term_description,
 								'slug' => $term_slug,
 							]);
+			if ( is_wp_error( $term_data ) ) {
+				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $term_data->get_error_message(), 'geslib' );
+				return false;
+			}
 			add_term_meta($term_data['term_id'],'editorial_geslib_id', $editorial->geslib_id);
     	}
-		if ( is_wp_error($term_data) ) {
-            // Handle the error here
-			$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $term_data->get_error_message(), 'geslib' );
-			return false;
-		}
 		return get_term($term_data['term_id'], 'editorials');
 	}
     /**

@@ -81,6 +81,10 @@ use Inc\Geslib\Api\GeslibApiReadFiles;
 
         <li>Tareas en la cola "store_products":<br />
             <strong data-target="total-products-queue"><?php echo $geslibApiDbQueueManager->countGeslibQueue('store_products'); ?></strong>
+            <br />
+            Stock updates: <strong><?php echo $geslibApiDbQueueManager->countGeslibQueueByAction('store_products', 'stock'); ?></strong>
+            <br />
+            Builds: <strong><?php echo $geslibApiDbQueueManager->countGeslibQueueByAction('store_products', 'B'); ?></strong>
         </li>
         <li>Tareas en la cola "store_authors":<br />
             <strong data-target="total-authors-queue"><?php echo $geslibApiDbQueueManager->countGeslibQueue('store_autors'); ?></strong>

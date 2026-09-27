@@ -67,14 +67,39 @@ class GeslibStoreProductsCommand {
         $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
         $geslibApiStoreData = new GeslibApiStoreData;
         $dilveApi = new DilveApi();
+
+        // First: check if there's a stuck log in 'queued' status and retry it
+        $stuckLogId = $geslibApiDbLogManager->getQueuedLogId();
+        if ($stuckLogId) {
+            WP_CLI::line( 'Found stuck queued log: ' . $stuckLogId . '. Retrying.' );
+            $geslibApiDbLogManager->setLogStatus( $stuckLogId, 'queued' );
+            $geslibApiDbQueueManager->deleteItemsFromQueue( 'store_lines' );
+            $geslibApiLines->storeToLines($stuckLogId);
+            $geslibApiDbQueueManager->processFromQueue('store_lines');
+            $geslibApiStoreData->storeAuthors();
+            $geslibApiStoreData->storeEditorials();
+            $geslibApiDbProductsManager->storeProducts();
+            $geslibApiDbQueueManager->processFromQueue( 'store_editorials' );
+            $geslibApiDbQueueManager->processFromQueue( 'store_autors' );
+            $geslibApiDbQueueManager->processFromQueue( 'store_categories' );
+            $geslibApiDbQueueManager->processFromQueue( 'store_products' );
+            $geslibApiDbLinesManager->truncateGeslibLines();
+            $geslibApiDbLogManager->setLogStatus( $stuckLogId, 'processed');
+            $stuckFilename = $geslibApiDbLogManager->getGeslibLoggedFilename( $stuckLogId );
+            if ( $stuckFilename ) {
+                $geslibApiReadFiles->moveToProcessed( $stuckFilename );
+            }
+            WP_CLI::line( 'Stuck log processed: '.$stuckLogId);
+        }
+
         while( $loggedStatus = $geslibApiDbLogManager->checkLoggedStatus() ) {
             $geslibApiReadFiles->readFolder();
             $log_id = $geslibApiDbLogManager->getGeslibLoggedId();
-            if ( !$geslibApiDbLogManager->isQueued() ){
-                $geslibApiDbLogManager->setLogStatus( $log_id, 'queued' );
-            } else {
-                $geslibApiDbQueueManager->deleteItemsFromQueue( 'store_lines' );
+            if ( !$log_id ) {
+                WP_CLI::line( 'No valid log_id found. Stopping.' );
+                break;
             }
+            $geslibApiDbLogManager->setLogStatus( $log_id, 'queued' );
             $geslibApiLines->storeToLines();
             $geslibApiDbQueueManager->processFromQueue('store_lines');
             $geslibApiStoreData->storeAuthors();
@@ -86,6 +111,10 @@ class GeslibStoreProductsCommand {
             $geslibApiDbQueueManager->processFromQueue( 'store_products' );
             $geslibApiDbLinesManager->truncateGeslibLines();
             $geslibApiDbLogManager->setLogStatus( $log_id, 'processed');
+            $processedFilename = $geslibApiDbLogManager->getGeslibLoggedFilename( $log_id );
+            if ( $processedFilename ) {
+                $geslibApiReadFiles->moveToProcessed( $processedFilename );
+            }
         }
     }
 

@@ -203,6 +203,12 @@ class GeslibStoreProductsFormController extends BaseController
     public function ajaxHandleProcessAll() {
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
         
+        // Continue processing even after browser disconnects
+        ignore_user_abort(true);
+        if ( function_exists('apache_setenv') ) {
+            apache_setenv('no-gzip', '1');
+        }
+        
         $geslibApiReadFiles = new GeslibApiReadFiles();
         $geslibApiLines = new GeslibApiLines();
         $geslibApiDbLogManager = new GeslibApiDbLogManager;
@@ -210,12 +216,23 @@ class GeslibStoreProductsFormController extends BaseController
         $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
         $biblioApi = new BiblioApi;
 
-        $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'AJAX ajaxHandleProcessAll started', 'geslib');
+        $cronStart = microtime(true);
+        $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, '=== AJAX PROCESS ALL START ===', 'geslib');
 
+        // Send response immediately — processing continues in background
+        nocache_headers();
+        header( 'Content-Type: application/json; charset=utf-8' );
+        echo json_encode(['success' => true, 'message' => 'Procesando archivos en background.']);
+        fastcgi_finish_request();
+        // After this line, the browser gets a response but PHP keeps running
+
+        // Phase 1: Read files
+        $phaseStart = microtime(true);
         $geslibApiReadFiles->readFolder();
-        
-        // Check if there are queues of type 'store_products' and execute them
-        // Check if there are queues of type 'store_authors' and execute them
+        $phaseElapsed = round(microtime(true) - $phaseStart, 1);
+        $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Phase READ FILES completed in {$phaseElapsed}s", 'geslib');
+
+        // Phase 2: Process previous queues
         $queuetypes = [
             'store_lines', 
             'build_content', 
@@ -225,36 +242,83 @@ class GeslibStoreProductsFormController extends BaseController
             'store_colecciones', 
             'store_products'
         ];
+        $phaseStart = microtime(true);
         foreach( $queuetypes as $queuetype ) {
-            $geslibApiDbQueueManager->processFromQueue( $queuetype );
-            $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Processing previous queues: '. $queuetype, 'geslib');
-        }
-        while( $geslibApiDbLogManager->checkLoggedStatus() ) {
-            $log_id = $geslibApiDbLogManager->getGeslibLoggedId();
-            $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'New process: '. $log_id, 'geslib');
-
-            if ( !$geslibApiDbLogManager->isQueued() ){
-                $geslibApiDbLogManager->setLogStatus( $log_id, 'queued' );
-                $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Set log id: '. $log_id . ' to queued.', 'geslib');
-            } else {
-                $geslibApiDbQueueManager->deleteItemsFromQueue( 'store_lines' );
-                $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Delete items from queue: store_lines.', 'geslib');
+            $remaining = $geslibApiDbQueueManager->countGeslibQueue( $queuetype );
+            if ($remaining > 0) {
+                $geslibApiDbQueueManager->processFromQueue( $queuetype );
             }
-            $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Begin Store to lines. Log ID: '. $log_id, 'geslib');
-            $geslibApiLines->storeToLines($log_id);
+        }
+        $phaseElapsed = round(microtime(true) - $phaseStart, 1);
+        $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Phase PREVIOUS QUEUES completed in {$phaseElapsed}s", 'geslib');
 
+        // Phase 3: Stuck log recovery
+        $stuckLogId = $geslibApiDbLogManager->getQueuedLogId();
+        if ($stuckLogId) {
+            $phaseStart = microtime(true);
+            $geslibApiDbLogManager->setLogStatus( $stuckLogId, 'queued' );
+            $geslibApiDbQueueManager->deleteItemsFromQueue( 'store_lines' );
+            $geslibApiLines->storeToLines($stuckLogId);
             foreach( $queuetypes as $queuetype ) {
                 $geslibApiDbQueueManager->processFromQueue( $queuetype );
-                $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Processing queues: '. $queuetype, 'geslib');
             }
             $geslibApiDbLinesManager->truncateGeslibLines();
-            $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Truncate Geslib Lines', 'geslib');
-            $geslibApiDbLogManager->setLogStatus( $log_id, 'processed');
-            $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Set log id: '. $log_id . ' to processed.', 'geslib');
+            $geslibApiDbLogManager->setLogStatus( $stuckLogId, 'processed');
+            $stuckFilename = $geslibApiDbLogManager->getGeslibLoggedFilename( $stuckLogId );
+            if ( $stuckFilename ) {
+                $geslibApiReadFiles->moveToProcessed( $stuckFilename );
+            }
+            $phaseElapsed = round(microtime(true) - $phaseStart, 1);
+            $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Phase STUCK RECOVERY (log {$stuckLogId}) completed in {$phaseElapsed}s", 'geslib');
         }
-        $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'About to call wp_send_json_success', 'geslib');
-        update_option('geslib_admin_notice', 'Procesando todos los archivos.');
-        wp_send_json_success(['message' => 'Procesando todos los archivos.']);
+
+        // Phase 4: Process files — time-limited
+        $phaseStart = microtime(true);
+        $filesProcessed = 0;
+        while( $geslibApiDbLogManager->checkLoggedStatus() ) {
+            // Check time limit after each file
+            $elapsed = microtime(true) - $cronStart;
+            if ( $elapsed >= 120 ) {
+                $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__,
+                    "Time limit reached ({$elapsed}s) — stopping. {$filesProcessed} files processed.", 'geslib');
+                break;
+            }
+            
+            $log_id = $geslibApiDbLogManager->getGeslibLoggedId();
+            if ( !$log_id ) {
+                break;
+            }
+            $fileStart = microtime(true);
+            $filesProcessed++;
+            $geslibApiDbLogManager->setLogStatus( $log_id, 'queued' );
+            $geslibApiLines->storeToLines($log_id);
+            foreach( $queuetypes as $queuetype ) {
+                $remaining = $geslibApiDbQueueManager->countGeslibQueue( $queuetype );
+                if ($remaining > 0) {
+                    $geslibApiDbQueueManager->processFromQueue( $queuetype );
+                }
+            }
+            $geslibApiDbLinesManager->truncateGeslibLines();
+            $geslibApiDbLogManager->setLogStatus( $log_id, 'processed');
+            $processedFilename = $geslibApiDbLogManager->getGeslibLoggedFilename( $log_id );
+            if ( $processedFilename ) {
+                $geslibApiReadFiles->moveToProcessed( $processedFilename );
+            }
+            
+            $fileElapsed = round(microtime(true) - $fileStart, 1);
+            $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__,
+                "FILE (log {$log_id}) completed in {$fileElapsed}s [{$filesProcessed} files total]", 'geslib');
+        }
+        $phaseElapsed = round(microtime(true) - $phaseStart, 1);
+        $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Phase PROCESS FILES completed in {$phaseElapsed}s", 'geslib');
+
+        // Run summary
+        $totalElapsed = round(microtime(true) - $cronStart, 1);
+        $memPeak = round(memory_get_peak_usage(true) / 1048576, 1);
+        $biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__,
+            "=== AJAX SUMMARY === Duration: {$totalElapsed}s | Files: {$filesProcessed} | Memory peak: {$memPeak}MB ===", 'geslib');
+
+        update_option('geslib_admin_notice', "Procesados {$filesProcessed} archivos en {$totalElapsed}s.");
     }
 
     public function ajaxHandleSetToLogged() {

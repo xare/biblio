@@ -218,7 +218,7 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 		// APPEND CATEGORIES
 		if( isset($content['categories']) && is_array($content['categories']) && count( $content['categories']) > 0 ) {
 			foreach ( $content['categories'] as $key => $value ) {
-				$category_id = intval($key);
+				$category_id = (string) $key;
 				// Get terms
 				$cat_args = [
 					'taxonomy' => 'product_cat', // the taxonomy for the term
@@ -484,6 +484,384 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 		return false; // Return false if no product found
 	}
 	
+	/**
+	 * Pre-loads ALL product stocks into a lookup map for batch processing.
+	 * 
+	 * Returns an associative array keyed by geslib_id:
+	 * [ '17859' => { post_id: 42, current_stock: '5' }, ... ]
+	 * 
+	 * @return array
+	 */
+	public function loadStockMap(): array {
+		global $wpdb;
+
+		$results = $wpdb->get_results("
+			SELECT 
+				pm_geslib.post_id,
+				pm_geslib.meta_value AS geslib_id,
+				pm_stock.meta_value AS current_stock
+			FROM {$wpdb->postmeta} pm_geslib
+			INNER JOIN {$wpdb->postmeta} pm_stock 
+				ON pm_geslib.post_id = pm_stock.post_id 
+				AND pm_stock.meta_key = '_stock'
+			WHERE pm_geslib.meta_key = 'geslib_id'
+		", OBJECT_K );
+
+		return $results ?: [];
+	}
+
+	/**
+	 * Pre-loads ALL geslib_id → post_id mappings for batch product lookups.
+	 *
+	 * @return array [ '17859' => 42, ... ]
+	 */
+	public function loadProductIdMap(): array {
+		global $wpdb;
+
+		$results = $wpdb->get_results("
+			SELECT meta_value AS geslib_id, post_id
+			FROM {$wpdb->postmeta}
+			WHERE meta_key = 'geslib_id'
+		", OBJECT_K );
+
+		$map = [];
+		foreach ($results as $geslib_id => $row) {
+			$map[$geslib_id] = (int) $row->post_id;
+		}
+		return $map;
+	}
+
+	/**
+	 * Pre-loads ALL editorial terms (editorial_geslib_id → term_id).
+	 *
+	 * @return array [ '123' => 456, ... ]
+	 */
+	public function loadEditorialTermMap(): array {
+		global $wpdb;
+
+		$results = $wpdb->get_results("
+			SELECT tm.meta_value AS geslib_id, t.term_id
+			FROM {$wpdb->termmeta} tm
+			INNER JOIN {$wpdb->terms} t ON t.term_id = tm.term_id
+			INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_id = t.term_id
+			WHERE tm.meta_key = 'editorial_geslib_id'
+			AND tt.taxonomy = 'editorials'
+		");
+
+		$map = [];
+		if ($results) {
+			foreach ($results as $row) {
+				$map[$row->geslib_id] = (int) $row->term_id;
+			}
+		}
+		return $map;
+	}
+
+	/**
+	 * Pre-loads ALL author terms (author_geslib_id → term_id).
+	 *
+	 * @return array [ '123' => 456, ... ]
+	 */
+	public function loadAuthorTermMap(): array {
+		global $wpdb;
+
+		$results = $wpdb->get_results("
+			SELECT tm.meta_value AS geslib_id, t.term_id
+			FROM {$wpdb->termmeta} tm
+			INNER JOIN {$wpdb->terms} t ON t.term_id = tm.term_id
+			INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_id = t.term_id
+			WHERE tm.meta_key = 'author_geslib_id'
+			AND tt.taxonomy = 'autors'
+		");
+
+		$map = [];
+		if ($results) {
+			foreach ($results as $row) {
+				$map[$row->geslib_id] = (int) $row->term_id;
+			}
+		}
+		return $map;
+	}
+
+	/**
+	 * Pre-loads ALL category terms (category_geslib_id → term_id).
+	 *
+	 * @return array [ '123' => 456, ... ]
+	 */
+	public function loadCategoryTermMap(): array {
+		global $wpdb;
+
+		$results = $wpdb->get_results("
+			SELECT tm.meta_value AS geslib_id, t.term_id
+			FROM {$wpdb->termmeta} tm
+			INNER JOIN {$wpdb->terms} t ON t.term_id = tm.term_id
+			INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_id = t.term_id
+			WHERE tm.meta_key = 'category_geslib_id'
+			AND tt.taxonomy = 'product_cat'
+		");
+
+		$map = [];
+		if ($results) {
+			foreach ($results as $row) {
+				$map[$row->geslib_id] = (int) $row->term_id;
+			}
+		}
+		return $map;
+	}
+
+	/**
+	 * Checks if stock has changed using a pre-loaded map (no DB query).
+	 *
+	 * @param string $geslib_id The Geslib ID to check.
+	 * @param string $new_stock The new stock value from the B-line.
+	 * @param array $stockMap Pre-loaded stock map from loadStockMap().
+	 * @return bool True if stock changed, false otherwise.
+	 */
+	public function stockHasChanged(string $geslib_id, string $new_stock, array $stockMap): bool {
+		if (!isset($stockMap[$geslib_id])) {
+			return false; // Product not found, skip
+		}
+		return (int) $stockMap[$geslib_id]->current_stock !== (int) $new_stock;
+	}
+
+	/**
+	 * Batch-updates stock for multiple products in a single DB operation.
+	 *
+	 * @param array $changedStocks [geslib_id => new_stock, ...]
+	 * @param array $stockMap Pre-loaded stock map from loadStockMap().
+	 * @return int Number of products updated.
+	 */
+	public function batchUpdateStock(array $changedStocks, array $stockMap): int {
+		global $wpdb;
+		$count = 0;
+
+		// Group updates by value to reduce individual UPDATE queries
+		$byValue = [];
+		foreach ($changedStocks as $geslib_id => $newStock) {
+			if (!isset($stockMap[$geslib_id])) continue;
+			$product_id = (int) $stockMap[$geslib_id]->post_id;
+			$byValue[(int) $newStock][] = $product_id;
+		}
+
+		foreach ($byValue as $stockValue => $productIds) {
+			$placeholders = implode(',', array_fill(0, count($productIds), '%d'));
+			$wpdb->query($wpdb->prepare(
+				"UPDATE {$wpdb->postmeta} 
+				SET meta_value = %s 
+				WHERE post_id IN ($placeholders) 
+				AND meta_key = '_stock'",
+				array_merge([$stockValue], $productIds)
+			));
+			$count += count($productIds);
+		}
+
+		return $count;
+	}
+
+	/**
+	 * Batch-processes multiple products using pre-loaded maps.
+	 * Reduces DB queries from ~15 per product to ~1 per product (only $product->save()).
+	 *
+	 * @param array $tasks Array of queue task objects with geslib_id, data, action
+	 * @param array $productIdMap Pre-loaded geslib_id → post_id map
+	 * @param array $editorialMap Pre-loaded editorial_geslib_id → term_id map
+	 * @param array $authorMap Pre-loaded author_geslib_id → term_id map
+	 * @param array $categoryMap Pre-loaded category_geslib_id → term_id map
+	 * @return int Number of products processed
+	 */
+	public function batchStoreProducts(
+		array $tasks,
+		array $productIdMap,
+		array $editorialMap,
+		array $authorMap,
+		array $categoryMap
+	): int {
+		global $wpdb;
+
+		$count = 0;
+		$total = count($tasks);
+		$uncategorizedTermId = null;
+
+		// Pre-load uncategorized term once
+		$uncategorized = get_term_by('slug', 'uncategorized', 'product_cat');
+		if ($uncategorized) {
+			$uncategorizedTermId = $uncategorized->term_id;
+		}
+
+		foreach ($tasks as $task) {
+			$content = json_decode($task->data, true);
+			if (!$content) {
+				$count++;
+				continue;
+			}
+
+			$geslib_id = (int) $task->geslib_id;
+			$ean = isset($content['ean']) ? $content['ean'] : '';
+			$author = isset($content['author']) ? $content['author'] : '';
+			$num_paginas = isset($content['num_paginas']) ? $content['num_paginas'] : 0;
+			$book_name = isset($content['description']) ? $content['description'] : '';
+			$peso = isset($content['peso']) ? $content['peso'] / 1000 : 0;
+			$book_subtitle = isset($content['subtitulo']) ? $content['subtitulo'] : '';
+			$book_description = isset($content['sinopsis']) ? $content['sinopsis'] : '';
+			$stock = isset($content['stock']) ? $content['stock'] : 0;
+			$book_price = (isset($content['pvp']) && $content['pvp'] != null)
+				? floatval(str_replace(',', '.', $content['pvp']))
+				: 0.00;
+
+			// 1. Find or create product using pre-loaded map (O(1) lookup)
+			$product_id = isset($productIdMap[$geslib_id]) ? $productIdMap[$geslib_id] : 0;
+			if ($product_id) {
+				$product = wc_get_product($product_id);
+			} else {
+				$product = new \WC_Product_Simple;
+				$product->set_name($book_name);
+			}
+
+			if (!$product) continue;
+
+			// 2. Set product data
+			$product->set_description($book_description);
+			$product->set_status("publish");
+			$product->set_catalog_visibility('visible');
+			$product->set_price($book_price);
+			$product->set_regular_price($book_price);
+			$product->set_weight($peso);
+			$product->set_manage_stock(true);
+			$product->set_stock_quantity($stock);
+
+			// 3. Save product (unavoidable — triggers WC hooks)
+			try {
+				$product_id = $product->save();
+			} catch (\Exception $exception) {
+				$this->biblioApi->debug_log(
+					__CLASS__ . ':' . __LINE__ . ' ' . __FUNCTION__,
+					$exception->getMessage(),
+					'geslib'
+				);
+				continue;
+			}
+
+			// 4. Batch meta updates — single query to fetch existing, then bulk upsert
+			$metaUpdates = [];
+			if ($ean) {
+				$metaUpdates[] = ['meta_key' => '_ean', 'meta_value' => $ean];
+				$metaUpdates[] = ['meta_key' => '_num_paginas', 'meta_value' => $num_paginas];
+			}
+			if ($book_subtitle !== '') {
+				$metaUpdates[] = ['meta_key' => '_subtitle', 'meta_value' => $book_subtitle];
+			}
+			if ($author) {
+				$metaUpdates[] = ['meta_key' => '_author', 'meta_value' => $author];
+			}
+			// Always update geslib_id
+			$metaUpdates[] = ['meta_key' => 'geslib_id', 'meta_value' => $geslib_id];
+
+			if ( ! empty( $metaUpdates ) ) {
+				// Fetch all existing meta for this product in ONE query
+				$meta_keys = array_column( $metaUpdates, 'meta_key' );
+				$placeholders = implode( ',', array_fill( 0, count( $meta_keys ), '%s' ) );
+				$existing_rows = $wpdb->get_results( $wpdb->prepare(
+					"SELECT meta_id, meta_key FROM {$wpdb->postmeta} WHERE post_id = %d AND meta_key IN ({$placeholders})",
+					array_merge( [ $product_id ], $meta_keys )
+				) );
+				$existing_map = [];
+				foreach ( $existing_rows as $row ) {
+					$existing_map[ $row->meta_key ] = $row->meta_id;
+				}
+
+				// Split into updates and inserts
+				$to_update = [];
+				$to_insert = [];
+				foreach ( $metaUpdates as $meta ) {
+					if ( isset( $existing_map[ $meta['meta_key'] ] ) ) {
+						$to_update[] = $meta;
+						$to_update_ids[] = $existing_map[ $meta['meta_key'] ];
+					} else {
+						$to_insert[] = $meta;
+					}
+				}
+
+				// Bulk update existing meta
+				foreach ( $to_update as $i => $meta ) {
+					$wpdb->update(
+						$wpdb->postmeta,
+						[ 'meta_value' => $meta['meta_value'] ],
+						[ 'meta_id' => $existing_map[ $meta['meta_key'] ] ],
+						[ '%s' ],
+						[ '%d' ]
+					);
+				}
+
+				// Bulk insert new meta
+				foreach ( $to_insert as $meta ) {
+					$wpdb->insert(
+						$wpdb->postmeta,
+						[
+							'post_id'   => $product_id,
+							'meta_key'  => $meta['meta_key'],
+							'meta_value' => $meta['meta_value'],
+						],
+						[ '%d', '%s', '%s' ]
+					);
+				}
+			}
+
+			// 5. Assign editorial (from pre-loaded map)
+			$editorial_id = isset($content['editorial']) ? intval($content['editorial']) : 0;
+			if ($editorial_id && isset($editorialMap[$editorial_id])) {
+				wp_set_object_terms($product_id, $editorialMap[$editorial_id], 'editorials', true);
+			}
+
+			// 6. Assign authors (from pre-loaded map)
+			if (isset($content['authors']) && is_array($content['authors'])) {
+				foreach ($content['authors'] as $author_geslib_id => $value) {
+					$author_id = intval($author_geslib_id);
+					if (isset($authorMap[$author_id])) {
+						wp_set_object_terms($product_id, $authorMap[$author_id], 'autors', true);
+					}
+				}
+			}
+
+			// 7. Assign categories (from pre-loaded map)
+			if (isset($content['categories']) && is_array($content['categories'])) {
+				$categoryTermIds = [];
+				foreach ($content['categories'] as $cat_geslib_id => $value) {
+									$cat_id = (string) $cat_geslib_id;
+					if (isset($categoryMap[$cat_id])) {
+						$categoryTermIds[] = $categoryMap[$cat_id];
+					}
+				}
+
+				if (!empty($categoryTermIds)) {
+					// Remove uncategorized if other categories exist
+					if ($uncategorizedTermId && in_array($uncategorizedTermId, $categoryTermIds)) {
+						if (count($categoryTermIds) > 1) {
+							$key = array_search($uncategorizedTermId, $categoryTermIds);
+							unset($categoryTermIds[$key]);
+						}
+					}
+
+					// Remove existing categories and assign new ones
+					$existing_terms = wp_get_object_terms($product_id, 'product_cat', ['fields' => 'ids']);
+					if (!empty($existing_terms)) {
+						wp_remove_object_terms($product_id, $existing_terms, 'product_cat');
+					}
+
+					foreach ($categoryTermIds as $term_id) {
+						wp_set_object_terms($product_id, $term_id, 'product_cat', true);
+					}
+				}
+			}
+
+			$count++;
+			if ($count % 50 === 0) {
+				$this->biblioApi->getLogger()->debug('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Progress: {$count}/{$total} products", 'geslib');
+			}
+		}
+
+		return $count;
+	}
+
 	/**
 	 * Retrieves a product from the database using its Geslib ID.
 	 *
