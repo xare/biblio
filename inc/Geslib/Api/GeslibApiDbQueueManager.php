@@ -6,6 +6,16 @@ use Inc\Biblio\Api\BiblioApi;
 
 class GeslibApiDbQueueManager extends GeslibApiDbManager {
 
+	/**
+	 * Default cap on the number of rows written with a single multi-row INSERT.
+	 *
+	 * Batches larger than this intentionally fall back to row-by-row inserts:
+	 * one giant statement risks exceeding MySQL max_allowed_packet / SQL length
+	 * limits, which would fail the entire batch instead of degrading gracefully.
+	 * Tune at runtime with the 'biblio_geslib_multi_insert_threshold' filter.
+	 */
+	const MULTI_INSERT_THRESHOLD = 500;
+
 	private $biblioApi;
 
 	public function __construct() {
@@ -36,19 +46,105 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 			$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "insertLinesIntoQueue: {$errors} errors out of " . count($batch) . " items", 'geslib');
 		}
 	}
+
+	/**
+	 * insertQueueRows
+	 * Writes queue rows to the geslib queues table: one multi-row INSERT when the
+	 * batch fits MULTI_INSERT_THRESHOLD, otherwise a row-by-row fallback.
+	 * $wpdb never throws, so failures are detected via boolean returns.
+	 *
+	 * @param  array  $rows    List of rows, each keyed by log_id, geslib_id, entity, type, action, data.
+	 * @param  string $context Short label identifying the caller in log messages.
+	 * @return bool   True only when every row was inserted.
+	 */
+	private function insertQueueRows( array $rows, string $context ): bool {
+		global $wpdb;
+		if ( empty( $rows ) ) {
+			return true;
+		}
+
+		$queues_table = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
+		$threshold    = (int) apply_filters( 'biblio_geslib_multi_insert_threshold', self::MULTI_INSERT_THRESHOLD );
+		$placeholders = [
+			'log_id'    => '%d',
+			'geslib_id' => '%d',
+			'entity'    => '%s',
+			'type'      => '%s',
+			'action'    => '%s',
+			'data'      => '%s',
+		];
+
+		// Normalise every row to the six queue columns, in that fixed order.
+		$normalized = [];
+		foreach ( $rows as $row ) {
+			$normalized_row = [];
+			foreach ( $placeholders as $column => $format ) {
+				$value = $row[ $column ] ?? null;
+				if ( is_object( $value ) || is_array( $value ) ) {
+					$value = wp_json_encode( $value );
+				}
+				$normalized_row[ $column ] = $value;
+			}
+			$normalized[] = $normalized_row;
+		}
+
+		if ( count( $normalized ) <= $threshold ) {
+			// Fast path: ONE multi-row INSERT statement.
+			$columns = implode( ', ', array_keys( $placeholders ) );
+			$tuples  = [];
+			$values  = [];
+			foreach ( $normalized as $row ) {
+				$tuple = [];
+				foreach ( $row as $column => $value ) {
+					if ( null === $value ) {
+						// Insert a real SQL NULL: a %s placeholder would store '' instead.
+						$tuple[] = 'NULL';
+						continue;
+					}
+					$tuple[]  = $placeholders[ $column ];
+					$values[] = $value;
+				}
+				$tuples[] = '(' . implode( ',', $tuple ) . ')';
+			}
+			$sql      = "INSERT INTO {$queues_table} ({$columns}) VALUES " . implode( ', ', $tuples );
+			$prepared = empty( $values ) ? $sql : $wpdb->prepare( $sql, $values );
+			if ( false === $prepared || false === $wpdb->query( $prepared ) ) {
+				$this->biblioApi->debug_log( 'ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__,
+					"{$context}: multi-row insert of " . count( $normalized ) . " rows failed: " . $wpdb->last_error, 'geslib' );
+				return false;
+			}
+			return true;
+		}
+
+		// Fallback: row-by-row inserts for oversized batches (avoids exceeding
+		// max_allowed_packet / SQL length limits with one giant statement).
+		$format = array_values( $placeholders );
+		$failed = 0;
+		foreach ( $normalized as $row ) {
+			if ( false === $wpdb->insert( $queues_table, $row, $format ) ) {
+				$failed++;
+			}
+		}
+		if ( $failed > 0 ) {
+			$this->biblioApi->debug_log( 'ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__,
+				"{$context}: {$failed} of " . count( $normalized ) . " rows failed in row-by-row insert: " . $wpdb->last_error, 'geslib' );
+			return false;
+		}
+		return true;
+	}
+
     /**
      * insertProductsIntoQueue
      *
      * @param  array $batch
-     * @return void
+     * @return bool  True when every row was inserted and the bulk delete ran.
      */
-    public function insertProductsIntoQueue( array $batch ) {
+    public function insertProductsIntoQueue( array $batch ): bool {
 		global $wpdb;
 		$queues_table = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
 
 		// Batch INSERT: build rows array for single query
 		$rows = [];
-		$format = [];
 		foreach ( $batch as $item ) {
 			$data = is_object( $item['data'] ) ? wp_json_encode( $item['data'] ) : $item['data'];
 			$rows[] = [
@@ -59,21 +155,12 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 				'action'    => isset( $item['action'] ) ? $item['action'] : null,
 				'data'      => $data,
 			];
-			$format[] = '%d';
-			$format[] = '%d';
-			$format[] = '%s';
-			$format[] = '%s';
-			$format[] = '%s';
-			$format[] = '%s';
 		}
 
-		try {
-			$wpdb->insert( $queues_table, $rows, $format );
-			$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Batch inserted ".count($rows)." products into queue", 'geslib' );
-		} catch ( \Exception $exception ) {
-			$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Batch insert failed: ".$exception->getMessage(), 'geslib' );
-			return;
+		if ( ! $this->insertQueueRows( $rows, 'products' ) ) {
+			return false;
 		}
+		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Batch inserted ".count($rows)." products into queue", 'geslib' );
 
 		// Bulk DELETE: remove all corresponding build_content entries
 		$geslib_ids = array_column( $batch, 'geslib_id' );
@@ -90,20 +177,20 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Bulk delete failed: ".$exception->getMessage(), 'geslib' );
 			}
 		}
+		return true;
 	}
 
 	/**
 	 * insertAuthorsIntoQueue
 	 *
 	 * @param  array $batch
-	 * @return void
+	 * @return bool  True when every row was inserted and the bulk delete ran.
 	 */
-	public function insertAuthorsIntoQueue( array $batch ): void {
+	public function insertAuthorsIntoQueue( array $batch ): bool {
 		global $wpdb;
 		$queues_table = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
 
 		$rows = [];
-		$format = [];
 		foreach ( $batch as $item ) {
 			$data = is_object( $item['data'] ) ? wp_json_encode( $item['data'] ) : $item['data'];
 			$rows[] = [
@@ -114,16 +201,11 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 				'action'    => isset( $item['action'] ) ? $item['action'] : null,
 				'data'      => $data,
 			];
-			$format[] = '%d'; $format[] = '%d'; $format[] = '%s';
-			$format[] = '%s'; $format[] = '%s'; $format[] = '%s';
 		}
-		try {
-			$wpdb->insert( $queues_table, $rows, $format );
-			$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Batch inserted ".count($rows)." authors into queue", 'geslib' );
-		} catch ( \Exception $exception ) {
-			$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Batch insert failed: ".$exception->getMessage(), 'geslib' );
-			return;
+		if ( ! $this->insertQueueRows( $rows, 'authors' ) ) {
+			return false;
 		}
+		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Batch inserted ".count($rows)." authors into queue", 'geslib' );
 
 		$geslib_ids = array_column( $batch, 'geslib_id' );
 		$log_ids    = array_unique( array_column( $batch, 'log_id' ) );
@@ -139,14 +221,14 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Bulk delete failed: ".$exception->getMessage(), 'geslib' );
 			}
 		}
+		return true;
 	}
 
-	public function insertEditorialsIntoQueue( array $batch ) {
+	public function insertEditorialsIntoQueue( array $batch ): bool {
 		global $wpdb;
 		$queues_table = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
 
 		$rows = [];
-		$format = [];
 		foreach ( $batch as $item ) {
 			$data = is_object( $item['data'] ) ? wp_json_encode( $item['data'] ) : $item['data'];
 			$rows[] = [
@@ -157,16 +239,11 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 				'action'    => isset( $item['action'] ) ? $item['action'] : null,
 				'data'      => $data,
 			];
-			$format[] = '%d'; $format[] = '%d'; $format[] = '%s';
-			$format[] = '%s'; $format[] = '%s'; $format[] = '%s';
 		}
-		try {
-			$wpdb->insert( $queues_table, $rows, $format );
-			$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Batch inserted ".count($rows)." editorials into queue", 'geslib' );
-		} catch ( \Exception $exception ) {
-			$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Batch insert failed: ".$exception->getMessage(), 'geslib' );
-			return;
+		if ( ! $this->insertQueueRows( $rows, 'editorials' ) ) {
+			return false;
 		}
+		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Batch inserted ".count($rows)." editorials into queue", 'geslib' );
 
 		$geslib_ids = array_column( $batch, 'geslib_id' );
 		$log_ids    = array_unique( array_column( $batch, 'log_id' ) );
@@ -182,14 +259,14 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Bulk delete failed: ".$exception->getMessage(), 'geslib' );
 			}
 		}
+		return true;
 	}
 
-	public function insertColeccionesIntoQueue( array $batch ) {
+	public function insertColeccionesIntoQueue( array $batch ): bool {
 		global $wpdb;
 		$queues_table = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
 
 		$rows = [];
-		$format = [];
 		foreach ( $batch as $item ) {
 			$data = is_object( $item['data'] ) ? wp_json_encode( $item['data'] ) : $item['data'];
 			$rows[] = [
@@ -200,16 +277,11 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 				'action'    => isset( $item['action'] ) ? $item['action'] : null,
 				'data'      => $data,
 			];
-			$format[] = '%d'; $format[] = '%d'; $format[] = '%s';
-			$format[] = '%s'; $format[] = '%s'; $format[] = '%s';
 		}
-		try {
-			$wpdb->insert( $queues_table, $rows, $format );
-			$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Batch inserted ".count($rows)." colecciones into queue", 'geslib' );
-		} catch ( \Exception $exception ) {
-			$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Batch insert failed: ".$exception->getMessage(), 'geslib' );
-			return;
+		if ( ! $this->insertQueueRows( $rows, 'colecciones' ) ) {
+			return false;
 		}
+		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Batch inserted ".count($rows)." colecciones into queue", 'geslib' );
 
 		$geslib_ids = array_column( $batch, 'geslib_id' );
 		$log_ids    = array_unique( array_column( $batch, 'log_id' ) );
@@ -225,20 +297,20 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Bulk delete failed: ".$exception->getMessage(), 'geslib' );
 			}
 		}
+		return true;
 	}
 
 	/**
 	 * insertCategoriesIntoQueue
 	 *
 	 * @param  mixed $batch
-	 * @return void
+	 * @return bool  True when every row was inserted and the bulk delete ran.
 	 */
-	public function insertCategoriesIntoQueue( array $batch ) {
+	public function insertCategoriesIntoQueue( array $batch ): bool {
 		global $wpdb;
 		$queues_table = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
 
 		$rows = [];
-		$format = [];
 		foreach ( $batch as $item ) {
 			$data = is_object( $item['data'] ) ? wp_json_encode( $item['data'] ) : $item['data'];
 			$rows[] = [
@@ -249,16 +321,11 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 				'action'    => isset( $item['action'] ) ? $item['action'] : null,
 				'data'      => $data,
 			];
-			$format[] = '%d'; $format[] = '%d'; $format[] = '%s';
-			$format[] = '%s'; $format[] = '%s'; $format[] = '%s';
 		}
-		try {
-			$wpdb->insert( $queues_table, $rows, $format );
-			$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Batch inserted ".count($rows)." categories into queue", 'geslib' );
-		} catch ( \Exception $exception ) {
-			$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Batch insert failed: ".$exception->getMessage(), 'geslib' );
-			return;
+		if ( ! $this->insertQueueRows( $rows, 'categories' ) ) {
+			return false;
 		}
+		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Batch inserted ".count($rows)." categories into queue", 'geslib' );
 
 		$geslib_ids = array_column( $batch, 'geslib_id' );
 		$log_ids    = array_unique( array_column( $batch, 'log_id' ) );
@@ -274,6 +341,7 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Bulk delete failed: ".$exception->getMessage(), 'geslib' );
 			}
 		}
+		return true;
 	}
 
     /**
