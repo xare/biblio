@@ -3,6 +3,7 @@
 namespace Inc\Geslib;
 
 use Inc\Geslib\Base\Cron;
+use Inc\Geslib\Schedules;
 use Inc\Geslib\Base\WooCommerce_Customizations;
 use Inc\Geslib\Base\Enqueue;
 use Inc\Geslib\Base\GeslibEditorialController;
@@ -61,6 +62,7 @@ final class Init {
       Enqueue::class,
       Dashboard::class,
       WooCommerce_Customizations::class,
+      Schedules::class,
       Cron::class,
       GeslibUpdateValuesController::class
     ];

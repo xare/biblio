@@ -26,9 +26,9 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
     /**
      * storeProducts
      *
-     * @return void
+     * @return bool  True when every batch was enqueued; false on the first insert failure.
      */
-    public function storeProducts() {
+    public function storeProducts(): bool {
 		global $wpdb;
         $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
 		$geslibQueuesTable = $wpdb->prefix.self::GESLIB_QUEUES_TABLE;
@@ -64,15 +64,20 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 				$item['data'] = $line->data;
 				$batch[] = $item;
 				if ( count( $batch ) >= $batch_size ) {
-					$geslibApiDbQueueManager->insertProductsIntoQueue( $batch );
+					if ( ! $geslibApiDbQueueManager->insertProductsIntoQueue( $batch ) ) {
+						return false;
+					}
 					$batch = [];
 				}
 			}
 			// Don't forget the last batch
 			if ( !empty( $batch ) ) {
-				$geslibApiDbQueueManager->insertProductsIntoQueue( $batch );
+				if ( ! $geslibApiDbQueueManager->insertProductsIntoQueue( $batch ) ) {
+					return false;
+				}
 			}
 		}
+		return true;
 	}
 
     /**

@@ -3,6 +3,7 @@
 namespace Inc\Geslib\Api;
 
 use Inc\Biblio\Api\BiblioApi;
+use Inc\Biblio\Api\DatabaseGuard;
 
 class GeslibApiDbLogManager extends GeslibApiDbManager {
 	private $biblioApi;
@@ -31,16 +32,14 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 			$linesCount,
 		];
 		$insertArray = array_combine(self::$geslibLogKeys, $geslibLogValues);
-		try {
-			$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Inserting the file $filename into geslib_log table", 'geslib');
-		$wpdb->insert($wpdb->prefix . self::GESLIB_LOG_TABLE,
-					$insertArray,
-					['%s', '%d', '%s', '%s', '%s', '%d']);
-			return true;
-		} catch (\Exception $e) {
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "This file has not been properly inserted into the database due to an error: ".$e->getMessage(), 'geslib');
-			return false;
-		}
+		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Inserting the file $filename into geslib_log table", 'geslib');
+		return DatabaseGuard::guard(
+			$wpdb->insert($wpdb->prefix . self::GESLIB_LOG_TABLE,
+				$insertArray,
+				['%s', '%d', '%s', '%s', '%s', '%d']),
+			__METHOD__,
+			'geslib'
+		);
 	}
 
     /**
@@ -61,12 +60,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 			WHERE filename = %s",
             $filename
         );
-		try {
-			return (bool) $wpdb->get_var($query) > 0;
-		} catch(\Exception $e) {
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "This file has not been found into the database due to an error: ".$e->getMessage(), 'geslib');
-			return false;
-		}
+		return DatabaseGuard::guard($wpdb->get_var($query), __METHOD__, 'geslib');
 
     }
 
@@ -87,12 +81,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
              WHERE filename = %s",
             $filename
         );
-        try {
-            return (int) $wpdb->get_var( $query );
-        } catch(\Exception $e) {
-            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Error getting next cycle: ".$e->getMessage(), 'geslib');
-            return 1;
-        }
+        return DatabaseGuard::guard($wpdb->get_var( $query ), __METHOD__, 'geslib');
     }
 
     /**
@@ -114,12 +103,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
              LIMIT 1",
             $filename
         );
-        try {
-            return $wpdb->get_var( $query );
-        } catch(\Exception $e) {
-            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Error getting last status: ".$e->getMessage(), 'geslib');
-            return null;
-        }
+        return DatabaseGuard::guard($wpdb->get_var( $query ), __METHOD__, 'geslib');
     }
 
     /**
@@ -137,12 +121,11 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 			WHERE status = '%s'",
             'queued'
         );
-		try {
-        	return (string) $wpdb->get_var($query);
-		} catch(\Exception $e) {
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "This file has not been found into the database due to an error: ".$e->getMessage(), 'geslib');
+		$result = DatabaseGuard::guard($wpdb->get_var($query), __METHOD__, 'geslib');
+		if ( false === $result ) {
 			return false;
 		}
+		return (string) $result;
 	}
 
     /**
@@ -168,13 +151,11 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 								ORDER BY cycle ASC, id ASC
 								LIMIT %d",
 								'logged', 'queued', 1);
-		try {
-			$result = $wpdb->get_var($query);
-			return ( $result !== null ) ? (int) $result : false;
-		} catch(\Exception $e) {
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "This file has not been found into the database due to an error: ".$e->getMessage(), 'geslib');
+		$result = DatabaseGuard::guard($wpdb->get_var($query), __METHOD__, 'geslib');
+		if ( false === $result ) {
 			return false;
 		}
+		return ( $result !== null ) ? (int) $result : false;
 	}
 
     /**
@@ -193,13 +174,11 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 								FROM {$table_name}
 								WHERE id = %d",
 								$log_id);
-		try {
-			return (string) $wpdb->get_var($query);
-		}
-		catch(\Exception $e) {
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "This file has not been found into the database due to an error: ".$e->getMessage(), 'geslib');
+		$result = DatabaseGuard::guard($wpdb->get_var($query), __METHOD__, 'geslib');
+		if ( false === $result ) {
 			return false;
 		}
+		return (string) $result;
 
 	}
 
@@ -224,12 +203,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 								FROM {$table_name}
 								WHERE status IN (%s, %s)",
 								'logged', 'queued' );
-		try {
-			return (int) $wpdb->get_var( $sql ) > 0;
-		} catch(\Exception $e) {
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "This file has not been found into the database due to an error: ".$e->getMessage(), 'geslib');
-			return false;
-		}
+		return DatabaseGuard::guard($wpdb->get_var( $sql ), __METHOD__, 'geslib');
 	}
 
 	/**
@@ -246,12 +220,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
             WHERE status = %s LIMIT %d",
 			['queued', 1 ]
 		);
-		try {
-			return (string) ($wpdb->get_var($sql) == null) ? false : $wpdb->get_var($sql);
-		} catch(\Exception $e) {
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "This file has not been found into the database due to an error: ".$e->getMessage(), 'geslib');
-			return false;
-		}
+		return (string) (DatabaseGuard::guard($wpdb->get_var($sql), __METHOD__, 'geslib') == null) ? false : DatabaseGuard::guard($wpdb->get_var($sql), __METHOD__, 'geslib');
 	}
 
     /**
@@ -269,13 +238,8 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 		$sql = "UPDATE {$table_name} SET status = 'logged'";
 
 		// Execute the query
-		try {
-			$wpdb->query($sql);
-			return true;
-		} catch (\Exception $exception) {
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'geslib');
-			return false;
-		}
+		$result = DatabaseGuard::guard($wpdb->query($sql), __METHOD__, 'geslib');
+		return false !== $result;
 	}
 
     /**
@@ -290,15 +254,10 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 	public function countGeslibLogStatus( string $status ): int|false {
 		global $wpdb;
 		$table_name = $wpdb->prefix . self::GESLIB_LOG_TABLE;
-		try {
-			$query = $wpdb->prepare( "SELECT COUNT(id)
+		$query = $wpdb->prepare( "SELECT COUNT(id)
 								FROM {$table_name}
 								WHERE status = %s", $status);
-			return (int) $wpdb->get_var( $query );
-		} catch(\Exception $exception) {
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'geslib');
-			return false;
-		}
+		return DatabaseGuard::guard($wpdb->get_var( $query ), __METHOD__, 'geslib');
 	}
 
     /**
@@ -312,13 +271,8 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 	public function countGeslibLog(): int {
 		global $wpdb;
 		$table_name = $wpdb->prefix . self::GESLIB_LOG_TABLE;
-		try {
-			return (int) $wpdb->get_var( "SELECT COUNT(id)
-								FROM {$table_name}");
-		} catch(\Exception $exception) {
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'geslib');
-			return false;
-		}
+		return DatabaseGuard::guard($wpdb->get_var( "SELECT COUNT(id)
+								FROM {$table_name}"), __METHOD__, 'geslib');
 
 	}
 
@@ -332,13 +286,9 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 	public function fetchLoggedFilesFromDb(): array|false {
 		global $wpdb;
 		$table_name = $wpdb->prefix . self::GESLIB_LOG_TABLE;
-		try {
-			return (array) $wpdb->get_results( "SELECT filename, status
-											FROM {$table_name}");
-		} catch (\Exception $exception) {
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'geslib');
-			return false;
-		}
+		$rows = DatabaseGuard::guard($wpdb->get_results( "SELECT filename, status
+											FROM {$table_name}"), __METHOD__, 'geslib');
+		return is_array($rows) ? $rows : [];
 
 	}
 
@@ -352,24 +302,30 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
      */
     public function truncateGeslibLogs(): bool {
 		global $wpdb;
-		try {
-			$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . self::GESLIB_LINES_TABLE . ' WHERE log_id IN (SELECT id FROM '.$wpdb->prefix.self::GESLIB_LOG_TABLE.')');
-			$wpdb->query( 'ALTER TABLE ' . $wpdb->prefix . self::GESLIB_LINES_TABLE . ' AUTO_INCREMENT = 1' );
-			$wpdb->query( 'SET FOREIGN_KEY_CHECKS=0;' );
-			$wpdb->query( 'TRUNCATE TABLE ' . $wpdb->prefix . self::GESLIB_LOG_TABLE );
-			$wpdb->query( 'SET FOREIGN_KEY_CHECKS=1;' );
-			global $wpdb;
-			if ( ! empty( $wpdb->queries ) ) {
-				foreach ( $wpdb->queries as $query ) {
-					// Log each query to the debug log
-					$this->biblioApi->debug_log( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, $query[0] );
-				}
-			}
-			return true;
-		} catch( \Exception $exception ) {
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Unable to truncate geslib_lines table' .$exception->getMessage(), 'geslib');
-			return false;
+		$success = true;
+		if ( false === DatabaseGuard::guard( $wpdb->query( 'DELETE FROM ' . $wpdb->prefix . self::GESLIB_LINES_TABLE . ' WHERE log_id IN (SELECT id FROM '.$wpdb->prefix.self::GESLIB_LOG_TABLE.')'), __METHOD__, 'geslib' ) ) {
+			$success = false;
 		}
+		if ( false === DatabaseGuard::guard( $wpdb->query( 'ALTER TABLE ' . $wpdb->prefix . self::GESLIB_LINES_TABLE . ' AUTO_INCREMENT = 1' ), __METHOD__, 'geslib' ) ) {
+			$success = false;
+		}
+		if ( false === DatabaseGuard::guard( $wpdb->query( 'SET FOREIGN_KEY_CHECKS=0;' ), __METHOD__, 'geslib' ) ) {
+			$success = false;
+		}
+		if ( false === DatabaseGuard::guard( $wpdb->query( 'TRUNCATE TABLE ' . $wpdb->prefix . self::GESLIB_LOG_TABLE ), __METHOD__, 'geslib' ) ) {
+			$success = false;
+		}
+		if ( false === DatabaseGuard::guard( $wpdb->query( 'SET FOREIGN_KEY_CHECKS=1;' ), __METHOD__, 'geslib' ) ) {
+			$success = false;
+		}
+		global $wpdb;
+		if ( ! empty( $wpdb->queries ) ) {
+			foreach ( $wpdb->queries as $query ) {
+				// Log each query to the debug log
+				$this->biblioApi->debug_log( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, $query[0] );
+			}
+		}
+		return $success;
 	}
 
     /**
@@ -395,13 +351,12 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 		$where = ['id' => $log_id];
 		$format = ['%s', '%s']; // string format
 		$where_format = ['%d']; // integer format
-		try {
-			$wpdb->update( $table_name, $data, $where, $format, $where_format);
-			return true;
-		} catch( \Exception $exception ) {
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Unable to update the row'.$exception->getMessage(), 'geslib');
-			return false;
-		}
+		$result = DatabaseGuard::guard(
+			$wpdb->update( $table_name, $data, $where, $format, $where_format),
+			__METHOD__,
+			'geslib'
+		);
+		return false !== $result;
 	}
 
 	/**
@@ -412,15 +367,10 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 	public function getQueuedLogId(): int|false {
 		global $wpdb;
 		$table_name = $wpdb->prefix.self::GESLIB_LOG_TABLE;
-		try {
-			$query = $wpdb->prepare( "SELECT id
+		$query = $wpdb->prepare( "SELECT id
 										FROM {$table_name}
 										WHERE status = %s",'queued' );
-			return (int) $wpdb->get_var($query);
-		} catch ( \Exception $exception) {
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'ERROR on getQueuedLogId: '. $exception->getMessage(), 'geslib');
-			return false;
-		}
+		return DatabaseGuard::guard($wpdb->get_var($query), __METHOD__, 'geslib');
 
 	}
 
@@ -445,11 +395,6 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 									FROM $table_name
 									WHERE status = %s LIMIT %d", ['queued', 1] );
         // Return true if a result is found, false otherwise.
-        try {
-			return !is_null( $wpdb->get_var( $query ) );
-		} catch( \Exception $exception ) {
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Unable to check if there are any queued items'.$exception->getMessage(), 'geslib');
-			return false;
-		}
+        return DatabaseGuard::guard($wpdb->get_var( $query ), __METHOD__, 'geslib');
     }
 }

@@ -6,6 +6,16 @@ use Inc\Geslib\Api\GeslibApiDbManager;
 
 class GeslibQueuesListTable extends WP_List_Table {
 
+    /**
+     * Columns that may appear in ORDER BY. Anything else falls back to 'id'.
+     * ORDER BY cannot be parameterised via $wpdb->prepare(), so the only safe
+     * input handling is a whitelist.
+     */
+    private const ORDERABLE_COLUMNS = [ 'id', 'log_id', 'geslib_id', 'type', 'entity', 'action', 'data' ];
+
+    /** Direction whitelist for ORDER BY. */
+    private const ORDER_DIRECTIONS = [ 'ASC', 'DESC' ];
+
     private $geslibApiDbLinesManager;
 
     public function __construct() {
@@ -18,6 +28,12 @@ class GeslibQueuesListTable extends WP_List_Table {
     }
     public function prepare_items() {
         global $wpdb;
+
+        // Read-only admin table: gate on capability before touching the DB.
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You are not allowed to view the Geslib queues table.', 'geslib' ) );
+        }
+
         $cegalApiDbLinesManager = new GeslibApiDbQueueManager;
         $linesTable = $wpdb->prefix . $cegalApiDbLinesManager::GESLIB_QUEUES_TABLE;
         // define data set for WP_List_Table => data
@@ -30,26 +46,43 @@ class GeslibQueuesListTable extends WP_List_Table {
             'action',
         ];
         foreach($filters as $filtername){
-            $postdata = isset($_POST[ 'filter_'.$filtername ]) ? $_POST[ 'filter_'.$filtername ] : '';
+            $postdata = isset($_POST[ 'filter_'.$filtername ]) ? wp_unslash($_POST[ 'filter_'.$filtername ]) : '';
             if ( !empty( $postdata )) {
-                $value = (is_integer($postdata)) ? (int) $postdata : sanitize_text_field($postdata);
+                $value = sanitize_text_field($postdata);
                 $where = $wpdb->prepare(' WHERE '.$filtername.' = %s', $value);
             }
         }
 
-        $orderby = isset( $_GET['orderby'] ) ? trim( $_GET['orderby'] ): "id";
-        $order = isset( $_GET['order'] ) ? trim( $_GET['order'] ): "ASC";
+        // Whitelist ORDER BY inputs; they are interpolated into SQL because
+        // prepare() cannot bind identifiers.
+        $orderby = isset( $_GET['orderby'] ) ? sanitize_key( wp_unslash( $_GET['orderby'] ) ) : 'id';
+        if ( ! in_array( $orderby, self::ORDERABLE_COLUMNS, true ) ) {
+            $orderby = 'id';
+        }
+        $order = isset( $_GET['order'] ) ? strtoupper( sanitize_text_field( wp_unslash( $_GET['order'] ) ) ) : 'ASC';
+        if ( ! in_array( $order, self::ORDER_DIRECTIONS, true ) ) {
+            $order = 'ASC';
+        }
 
-        $search_term = isset($_POST['s'])? trim($_POST['s']) : "";
+        // Escape LIKE wildcards and bind every user value with prepare().
+        // The previous query also matched a non-existent 'queued' column, so
+        // any search failed with "Unknown column"; that clause is gone.
+        $search_term = isset($_POST['s'])? sanitize_text_field( wp_unslash( $_POST['s'] ) ) : "";
         if ($search_term) {
-            $search_term = sanitize_text_field($search_term);
-            $where = " WHERE log_id = {$search_term}
-                        OR geslib_id = {$search_term}
-                        OR type LIKE '%{$search_term}%'
-                        OR entity LIKE '%{$search_term}%'
-                        OR action LIKE '%{$search_term}%'
-                        OR data LIKE '%{$search_term}%'
-                        OR queued LIKE '%{$search_term}%'";
+            $like     = '%' . $wpdb->esc_like( $search_term ) . '%';
+            $clauses  = [];
+            $args     = [];
+            if ( is_numeric( $search_term ) ) {
+                $clauses[] = 'log_id = %d';
+                $clauses[] = 'geslib_id = %d';
+                $args[]    = (int) $search_term;
+                $args[]    = (int) $search_term;
+            }
+            foreach ( [ 'type', 'entity', 'action', 'data' ] as $text_column ) {
+                $clauses[] = $text_column . ' LIKE %s';
+                $args[]    = $like;
+            }
+            $where = $wpdb->prepare( ' WHERE ' . implode( ' OR ', $clauses ), $args );
         }
         // First, get the total count of items
         $sql_count = "SELECT COUNT(*) FROM {$linesTable} {$where}";
@@ -83,8 +116,21 @@ class GeslibQueuesListTable extends WP_List_Table {
         $current_page = $this->get_pagenum();
         $offset = ($current_page - 1) * $per_page;
 
+        // Defense in depth: re-whitelist in case this method is called directly.
+        if ( ! in_array( $orderby, self::ORDERABLE_COLUMNS, true ) ) {
+            $orderby = 'id';
+        }
+        $order = strtoupper( (string) $order );
+        if ( ! in_array( $order, self::ORDER_DIRECTIONS, true ) ) {
+            $order = 'ASC';
+        }
+
         $table = $wpdb->prefix . $geslibApiDbManager::GESLIB_QUEUES_TABLE;
-        $sql_data = $wpdb->prepare("SELECT * FROM {$table} {$where} ORDER BY {$orderby} {$order} LIMIT {$per_page} OFFSET {$offset}");
+        $sql_data = $wpdb->prepare(
+            "SELECT * FROM {$table} {$where} ORDER BY {$orderby} {$order} LIMIT %d OFFSET %d",
+            (int) $per_page,
+            (int) $offset
+        );
         return  $wpdb->get_results($sql_data, ARRAY_A);
     }
 

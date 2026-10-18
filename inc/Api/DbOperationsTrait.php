@@ -18,12 +18,7 @@ trait DbOperationsTrait
     {
         global $wpdb;
         $table_name = $this->getTableName($table_suffix);
-        try {
-            return (int) $wpdb->get_var("SELECT COUNT(id) FROM {$table_name}");
-        } catch (Exception $e) {
-            $this->logger?->error(__METHOD__, "Count failed: " . $e->getMessage());
-            return 0;
-        }
+        return (int) DatabaseGuard::guard($wpdb->get_var("SELECT COUNT(id) FROM {$table_name}"), __METHOD__, 'biblio');
     }
 
     protected function insert(array $data, string $table_suffix, array $format = null): int
@@ -35,13 +30,8 @@ trait DbOperationsTrait
             $format = array_fill(0, count($data), '%s');
         }
 
-        try {
-            $wpdb->insert($table_name, $data, $format);
-            return (int) $wpdb->insert_id;
-        } catch (Exception $e) {
-            $this->logger?->error(__METHOD__, "Insert failed: " . $e->getMessage());
-            return 0;
-        }
+        DatabaseGuard::guard($wpdb->insert($table_name, $data, $format), __METHOD__, 'biblio');
+        return (int) $wpdb->insert_id;
     }
 
     protected function update(int $id, array $data, string $table_suffix, array $format = null): bool
@@ -53,12 +43,12 @@ trait DbOperationsTrait
             $format = array_fill(0, count($data), '%s');
         }
 
-        try {
-            return (bool) $wpdb->update($table_name, $data, ['id' => $id], $format, ['%d']);
-        } catch (Exception $e) {
-            $this->logger?->error(__METHOD__, "Update failed: " . $e->getMessage());
-            return false;
-        }
+        $result = DatabaseGuard::guard(
+            $wpdb->update($table_name, $data, ['id' => $id], $format, ['%d']),
+            __METHOD__,
+            'biblio'
+        );
+        return false !== $result;
     }
 
     protected function delete(int $id, string $table_suffix): bool
@@ -66,12 +56,12 @@ trait DbOperationsTrait
         global $wpdb;
         $table_name = $this->getTableName($table_suffix);
 
-        try {
-            return (bool) $wpdb->delete($table_name, ['id' => $id], ['%d']);
-        } catch (Exception $e) {
-            $this->logger?->error(__METHOD__, "Delete failed: " . $e->getMessage());
-            return false;
-        }
+        $result = DatabaseGuard::guard(
+            $wpdb->delete($table_name, ['id' => $id], ['%d']),
+            __METHOD__,
+            'biblio'
+        );
+        return false !== $result;
     }
 
     protected function truncate(string $table_suffix): bool
@@ -79,12 +69,12 @@ trait DbOperationsTrait
         global $wpdb;
         $table_name = $this->getTableName($table_suffix);
 
-        try {
-            return (bool) $wpdb->query("TRUNCATE TABLE {$table_name}");
-        } catch (Exception $e) {
-            $this->logger?->error(__METHOD__, "Truncate failed: " . $e->getMessage());
-            return false;
-        }
+        $result = DatabaseGuard::guard(
+            $wpdb->query("TRUNCATE TABLE {$table_name}"),
+            __METHOD__,
+            'biblio'
+        );
+        return false !== $result;
     }
 
     protected function select(string $table_suffix, array $conditions = [], string $columns = '*'): array

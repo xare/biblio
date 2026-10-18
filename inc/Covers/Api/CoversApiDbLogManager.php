@@ -3,6 +3,7 @@
 namespace Inc\Covers\Api;
 
 use Inc\Biblio\Api\BiblioApi;
+use Inc\Biblio\Api\DatabaseGuard;
 
 class CoversApiDbLogManager extends CoversApiDbManager {
 
@@ -30,15 +31,17 @@ class CoversApiDbLogManager extends CoversApiDbManager {
             0 // processed_products
 		];
 		$insertArray = array_combine(self::$coversLogKeys, $coversLogValues);
-		try {
+		$result = DatabaseGuard::guard(
 			$wpdb->insert($wpdb->prefix . self::COVERS_LOG_TABLE,
 						$insertArray,
-						['%s', '%s', '%s', '%d', '%d']);
-            return $wpdb->insert_id;
-		} catch (\Exception $e) {
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "This line has not been properly inserted into the database due to an error: ".$e->getMessage(), 'covers');
-            return false;
-        }
+						['%s', '%s', '%s', '%d', '%d']),
+			__METHOD__,
+			'covers'
+		);
+		if ( false === $result ) {
+			return false;
+		}
+        return $wpdb->insert_id;
 	}
 
     /**
@@ -58,13 +61,12 @@ class CoversApiDbLogManager extends CoversApiDbManager {
 		$where = ['id' => $log_id];
 		$format = ['%s']; // string format
 		$where_format = ['%d']; // integer format
-		try {
-			$wpdb->update( $table_name, $data, $where, $format, $where_format);
-			return true;
-		} catch( \Exception $exception ) {
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Unable to update the row.'.$exception->getMessage(), 'covers');
-			return false;
-		}
+		$result = DatabaseGuard::guard(
+			$wpdb->update( $table_name, $data, $where, $format, $where_format),
+			__METHOD__,
+			'covers'
+		);
+		return false !== $result;
 	}
 
 	/**
@@ -82,13 +84,15 @@ class CoversApiDbLogManager extends CoversApiDbManager {
 		$where = ['id' => $log_id];
 		$format = ['%d']; // integer format
 		$where_format = ['%d']; // integer format
-		try {
-			$wpdb->update( $table_name, $data, $where, $format, $where_format);
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'We updated the covers_log table with '.$processed_items.' scanned products.', 'covers');
-			return true;
-		} catch( \Exception $exception ) {
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Unable to update the row. '.$exception->getMessage(), 'covers');
+		$result = DatabaseGuard::guard(
+			$wpdb->update( $table_name, $data, $where, $format, $where_format),
+			__METHOD__,
+			'covers'
+		);
+		if ( false === $result ) {
 			return false;
 		}
+		$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'We updated the covers_log table with '.$processed_items.' scanned products.', 'covers');
+		return true;
 	}
 }

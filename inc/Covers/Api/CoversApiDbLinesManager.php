@@ -3,6 +3,7 @@
 namespace Inc\Covers\Api;
 
 use Inc\Biblio\Api\BiblioApi;
+use Inc\Biblio\Api\DatabaseGuard;
 
 class CoversApiDbLinesManager extends CoversApiDbManager {
 
@@ -45,23 +46,25 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
 
         //check if the line already exists and then decide whether INSERT or UPDATE
         $line_id = $this->getLineId($isbn);
-		try {
             if( $line_id ) {
                 $sql = "UPDATE $table_name SET attempts = attempts + 1 WHERE id = $line_id";
-                $wpdb->query($sql);
+                DatabaseGuard::guard($wpdb->query($sql), __METHOD__, 'covers');
                 $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Line with ISBN: $isbn already exists. Incrementing attempts. LINE ID: $line_id", 'covers');
                 return $line_id;
             } else {
-                $wpdb->insert($wpdb->prefix . self::COVERS_LINES_TABLE,
+                $result = DatabaseGuard::guard(
+                    $wpdb->insert($wpdb->prefix . self::COVERS_LINES_TABLE,
 						$insertArray,
-						['%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s']);
+						['%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s']),
+                    __METHOD__,
+                    'covers'
+                );
+                if ( false === $result ) {
+                    return false;
+                }
                 $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Inserted new line with ISBN: $isbn. LINE ID: " . $wpdb->insert_id, 'covers');
                 return $wpdb->insert_id;
             }
-		} catch (\Exception $e) {
-            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "This line has not been properly inserted into the database due to an error: ".$e->getMessage(), 'covers');
-            return false;
-        }
 	}
 
     /**
@@ -80,13 +83,12 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
         $where = ['id' => $id];
         $format = ['%s']; // string format
         $where_format = ['%d']; // integer format
-        try {
-            $wpdb->update( $table_name, $data, $where, $format, $where_format);
-            return true;
-        } catch( \Exception $exception ) {
-            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Unable to update the row.'.$exception->getMessage(), 'covers');
-            return false;
-        }
+        $result = DatabaseGuard::guard(
+            $wpdb->update( $table_name, $data, $where, $format, $where_format),
+            __METHOD__,
+            'covers'
+        );
+        return false !== $result;
     }
 
     /**
@@ -105,13 +107,12 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
         $where = ['id' => $id];
         $format = ['%s']; // string format
         $where_format = ['%d']; // integer format
-        try {
-            $wpdb->update( $table_name, $data, $where, $format, $where_format);
-            return true;
-        } catch( \Exception $exception ) {
-            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'covers');
-            return false;
-        }
+        $result = DatabaseGuard::guard(
+            $wpdb->update( $table_name, $data, $where, $format, $where_format),
+            __METHOD__,
+            'covers'
+        );
+        return false !== $result;
     }
 
     public function getLineId($filename) {
@@ -130,13 +131,12 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
         $where = ['id' => $line_id];
         $format = ['%s', '%d']; // string format
         $where_format = ['%d']; // integer format
-        try {
-            $wpdb->update( $table_name, $data, $where, $format, $where_format);
-            return true;
-        } catch( \Exception $exception ) {
-            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'covers');
-            return false;
-        }
+        $result = DatabaseGuard::guard(
+            $wpdb->update( $table_name, $data, $where, $format, $where_format),
+            __METHOD__,
+            'covers'
+        );
+        return false !== $result;
     }
 
     public function set_url_target(int $line_id, int $product_id){
