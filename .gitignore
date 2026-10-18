@@ -4,7 +4,9 @@ package-lock.json
 **/node_modules/
 **/vendor/
 dist/
-logs/
+logs/*
+!logs/.htaccess
+!logs/index.php
 *.csv
 *.code-workspace
 improvementproposal.md
