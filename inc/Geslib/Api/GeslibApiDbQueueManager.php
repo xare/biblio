@@ -3,6 +3,7 @@
 namespace Inc\Geslib\Api;
 
 use Inc\Biblio\Api\BiblioApi;
+use Inc\Biblio\Api\DatabaseGuard;
 
 class GeslibApiDbQueueManager extends GeslibApiDbManager {
 
@@ -35,12 +36,12 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 		$inserted = 0;
 		$errors = 0;
 		foreach ($batch as $item) {
-			try {
-				$wpdb->insert($wpdb->prefix . self::GESLIB_QUEUES_TABLE, $item, ['%d', '%d', '%s', '%s', '%s', '%s']);
-				$inserted++;
-			} catch( \Exception $exception ) {
+			$result = DatabaseGuard::guard($wpdb->insert($wpdb->prefix . self::GESLIB_QUEUES_TABLE, $item, ['%d', '%d', '%s', '%s', '%s', '%s']), __METHOD__, 'geslib');
+			if ( false === $result ) {
 				$errors++;
-            }
+			} else {
+				$inserted++;
+			}
 		}
 		if ($errors > 0) {
 			$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "insertLinesIntoQueue: {$errors} errors out of " . count($batch) . " items", 'geslib');
@@ -168,14 +169,10 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 		if ( ! empty( $geslib_ids ) ) {
 			$placeholders = implode( ',', array_fill( 0, count( $geslib_ids ), '%d' ) );
 			$log_placeholders = implode( ',', array_fill( 0, count( $log_ids ), '%d' ) );
-			try {
-				$wpdb->query( $wpdb->prepare(
-					"DELETE FROM {$queues_table} WHERE entity = 'product' AND type = 'build_content' AND geslib_id IN ({$placeholders}) AND log_id IN ({$log_placeholders})",
-					array_merge( $geslib_ids, $log_ids )
-				) );
-			} catch ( \Exception $exception ) {
-				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Bulk delete failed: ".$exception->getMessage(), 'geslib' );
-			}
+			DatabaseGuard::guard( $wpdb->query( $wpdb->prepare(
+				"DELETE FROM {$queues_table} WHERE entity = 'product' AND type = 'build_content' AND geslib_id IN ({$placeholders}) AND log_id IN ({$log_placeholders})",
+				array_merge( $geslib_ids, $log_ids )
+			) ), __METHOD__, 'geslib' );
 		}
 		return true;
 	}
@@ -212,14 +209,10 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 		if ( ! empty( $geslib_ids ) ) {
 			$ph = implode( ',', array_fill( 0, count( $geslib_ids ), '%d' ) );
 			$lph = implode( ',', array_fill( 0, count( $log_ids ), '%d' ) );
-			try {
-				$wpdb->query( $wpdb->prepare(
-					"DELETE FROM {$queues_table} WHERE entity = 'autors' AND type = 'store_autors' AND geslib_id IN ({$ph}) AND log_id IN ({$lph})",
-					array_merge( $geslib_ids, $log_ids )
-				) );
-			} catch ( \Exception $exception ) {
-				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Bulk delete failed: ".$exception->getMessage(), 'geslib' );
-			}
+			DatabaseGuard::guard( $wpdb->query( $wpdb->prepare(
+				"DELETE FROM {$queues_table} WHERE entity = 'autors' AND type = 'store_autors' AND geslib_id IN ({$ph}) AND log_id IN ({$lph})",
+				array_merge( $geslib_ids, $log_ids )
+			) ), __METHOD__, 'geslib' );
 		}
 		return true;
 	}
@@ -250,14 +243,10 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 		if ( ! empty( $geslib_ids ) ) {
 			$ph = implode( ',', array_fill( 0, count( $geslib_ids ), '%d' ) );
 			$lph = implode( ',', array_fill( 0, count( $log_ids ), '%d' ) );
-			try {
-				$wpdb->query( $wpdb->prepare(
-					"DELETE FROM {$queues_table} WHERE entity = 'editorial' AND type = 'store_editorials' AND geslib_id IN ({$ph}) AND log_id IN ({$lph})",
-					array_merge( $geslib_ids, $log_ids )
-				) );
-			} catch ( \Exception $exception ) {
-				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Bulk delete failed: ".$exception->getMessage(), 'geslib' );
-			}
+			DatabaseGuard::guard( $wpdb->query( $wpdb->prepare(
+				"DELETE FROM {$queues_table} WHERE entity = 'editorial' AND type = 'store_editorials' AND geslib_id IN ({$ph}) AND log_id IN ({$lph})",
+				array_merge( $geslib_ids, $log_ids )
+			) ), __METHOD__, 'geslib' );
 		}
 		return true;
 	}
@@ -288,14 +277,10 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 		if ( ! empty( $geslib_ids ) ) {
 			$ph = implode( ',', array_fill( 0, count( $geslib_ids ), '%d' ) );
 			$lph = implode( ',', array_fill( 0, count( $log_ids ), '%d' ) );
-			try {
-				$wpdb->query( $wpdb->prepare(
-					"DELETE FROM {$queues_table} WHERE entity = 'coleccion' AND type = 'store_colecciones' AND geslib_id IN ({$ph}) AND log_id IN ({$lph})",
-					array_merge( $geslib_ids, $log_ids )
-				) );
-			} catch ( \Exception $exception ) {
-				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Bulk delete failed: ".$exception->getMessage(), 'geslib' );
-			}
+			DatabaseGuard::guard( $wpdb->query( $wpdb->prepare(
+				"DELETE FROM {$queues_table} WHERE entity = 'coleccion' AND type = 'store_colecciones' AND geslib_id IN ({$ph}) AND log_id IN ({$lph})",
+				array_merge( $geslib_ids, $log_ids )
+			) ), __METHOD__, 'geslib' );
 		}
 		return true;
 	}
@@ -332,14 +317,10 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 		if ( ! empty( $geslib_ids ) ) {
 			$ph = implode( ',', array_fill( 0, count( $geslib_ids ), '%d' ) );
 			$lph = implode( ',', array_fill( 0, count( $log_ids ), '%d' ) );
-			try {
-				$wpdb->query( $wpdb->prepare(
-					"DELETE FROM {$queues_table} WHERE entity = 'product_cat' AND type = 'store_categories' AND geslib_id IN ({$ph}) AND log_id IN ({$lph})",
-					array_merge( $geslib_ids, $log_ids )
-				) );
-			} catch ( \Exception $exception ) {
-				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Bulk delete failed: ".$exception->getMessage(), 'geslib' );
-			}
+			DatabaseGuard::guard( $wpdb->query( $wpdb->prepare(
+				"DELETE FROM {$queues_table} WHERE entity = 'product_cat' AND type = 'store_categories' AND geslib_id IN ({$ph}) AND log_id IN ({$lph})",
+				array_merge( $geslib_ids, $log_ids )
+			) ), __METHOD__, 'geslib' );
 		}
 		return true;
 	}
@@ -355,7 +336,7 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 	public function deleteItemFromQueue( string $type, int $log_id, int $geslib_id ): bool {
 		global $wpdb;
 		$geslib_id = ( $geslib_id == null )? 0 : $geslib_id;
-		try {
+		$result = DatabaseGuard::guard(
 			$wpdb->delete(
 				$wpdb->prefix . self::GESLIB_QUEUES_TABLE,
 				[
@@ -368,12 +349,11 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 					'%d', // placeholder for 'geslib_id', assuming it's an integer
 					'%d'  // placeholder for 'log_id', assuming it's an integer
 				]
-			);
-			return true;
-		} catch(\Exception $exception) {
-			$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'geslib' );
-			return false;
-		}
+			),
+			__METHOD__,
+			'geslib'
+		);
+		return false !== $result;
 	}
 
 	 /**
@@ -384,8 +364,8 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
      */
     public function deleteItemsFromQueue( string $type ): bool {
 		global $wpdb;
-        try {
-            // Delete query using Drupal's Database API
+        // Delete query using Drupal's Database API
+		$result = DatabaseGuard::guard(
 			$wpdb->delete(
 				$wpdb->prefix . self::GESLIB_QUEUES_TABLE,
 				[
@@ -394,12 +374,11 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 				[
 					'%s', // placeholder for 'type'
 				]
-			);
-            return true;
-        } catch (\Exception $exception) {
-			$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'geslib' );
-            return false;
-        }
+			),
+			__METHOD__,
+			'geslib'
+		);
+		return false !== $result;
     }
 
 	/**
@@ -464,18 +443,13 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 				'coleccion' => 'store_colecciones',
 				'product_cat' => 'store_categories',
 			};
-			try {
-				$wpdb->update( $table_name,
-			 				['type' => $type],
-							[
-								'geslib_id' => $task->geslib_id,
-								'entity' => $task->entity],
-							'%s',
-							['%d','%s'] );
-			} catch (\Exception $exception) {
-				$this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'geslib' );
-				continue;
-			}
+			DatabaseGuard::guard( $wpdb->update( $table_name,
+		 				['type' => $type],
+						[
+							'geslib_id' => $task->geslib_id,
+							'entity' => $task->entity],
+						'%s',
+						['%d','%s'] ), __METHOD__, 'geslib' );
 		}
 	}
 	/**

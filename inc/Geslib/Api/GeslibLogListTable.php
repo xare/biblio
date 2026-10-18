@@ -2,6 +2,7 @@
 namespace Inc\Geslib\Api;
 
 use Inc\Biblio\Api\BiblioApi;
+use Inc\Biblio\Api\DatabaseGuard;
 use WP_List_Table;
 use Inc\Geslib\Api\GeslibApiDbManager;
 
@@ -175,24 +176,24 @@ class GeslibLogListTable extends WP_List_Table {
 
     public function update_log(int $log_id){
         global $wpdb;
-        try {
+        DatabaseGuard::guard(
             $wpdb->update($wpdb->prefix."geslib_log",
                         [ 'status' => 'logged' ],
-                        [ 'id' => $log_id ]);
-        } catch (\Exception $exception) {
-            $this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__,'update_log', $exception->getMessage(), 'geslib');
-        }
+                        [ 'id' => $log_id ]),
+            __METHOD__,
+            'geslib'
+        );
     }
 
     public function set_to_processed(int $log_id){
         global $wpdb;
-        try {
+        DatabaseGuard::guard(
             $wpdb->update($wpdb->prefix."geslib_log",
                         [ 'status' => 'processed' ],
-                        [ 'id' => $log_id ]);
-        } catch (\Exception $exception) {
-            $this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'geslib');
-        }
+                        [ 'id' => $log_id ]),
+            __METHOD__,
+            'geslib'
+        );
     }
 
     public function process_bulk_action() {

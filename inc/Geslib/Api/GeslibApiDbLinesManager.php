@@ -3,6 +3,7 @@
 namespace Inc\Geslib\Api;
 
 use Inc\Biblio\Api\BiblioApi;
+use Inc\Biblio\Api\DatabaseGuard;
 use Inc\Geslib\Api\GeslibApiDbManager;
 
 class GeslibApiDbLinesManager extends GeslibApiDbManager {
@@ -29,13 +30,12 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
      */
     public function truncateGeslibLines(): bool {
 		global $wpdb;
-		try {
-        	$wpdb->delete( $wpdb->prefix.self::GESLIB_QUEUES_TABLE, ['type' => 'store_lines'], ['%s'] );
-			return true;
-		} catch( \Exception $exception ) {
-            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__ , $exception->getMessage(), 'geslib');
-			return false;
-		}
+		$result = DatabaseGuard::guard(
+			$wpdb->delete( $wpdb->prefix.self::GESLIB_QUEUES_TABLE, ['type' => 'store_lines'], ['%s'] ),
+			__METHOD__,
+			'geslib'
+		);
+		return false !== $result;
 	}
 
     /**
@@ -48,7 +48,7 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
      */
     public function updateGeslibLines( int $geslib_id, string $entity, mixed $content): bool{
 		global $wpdb;
-		try {
+		$result = DatabaseGuard::guard(
 			$wpdb->update(
 				$wpdb->prefix.self::GESLIB_QUEUES_TABLE,
 				['data' => $content],
@@ -59,12 +59,11 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
 				],
 				'%s',
 				['%d','%s','%s']
-			);
-			return true;
-		} catch( \Exception $exception ) {
-            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $exception->getMessage(), 'geslib');
-			return false;
-		}
+			),
+			__METHOD__,
+			'geslib'
+		);
+		return false !== $result;
 	}
 
     /**
@@ -78,7 +77,7 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
 	 */
 	public function insertData( mixed $content_array, string $action, int $log_id, string $entity ): bool {
 		global $wpdb;
-		try {
+		return DatabaseGuard::guard(
 			$wpdb->insert(
 				$wpdb->prefix.self::GESLIB_QUEUES_TABLE,
 				[
@@ -89,12 +88,10 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
 					'entity' => $entity,
 					'data' => json_encode($content_array),
 				],
-			);
-            return true;
-		} catch (\Exception $e) {
-            $this->biblioApi->debug_log('ERROR '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Failed to insert {$entity} geslib_id={$content_array['geslib_id']}: " . $e->getMessage(), 'geslib');
-            return false;
-		}
+			),
+			__METHOD__,
+			'geslib'
+		);
 	}
 
     /**
@@ -126,7 +123,7 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
      * Get Authors from Geslib Lines
      *
      * @global wpdb $wpdb WordPress database abstraction object.
-     * @return mixed Array of authors or false on failure.
+     * @return mixed Array of authors, or an empty array on failure.
      */
     public function getAuthorsFromGeslibLines(): mixed {
         global $wpdb;
@@ -134,16 +131,10 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
         // Prepare the SQL query. Ensure your column names are correct.
         $query = "SELECT * FROM {$queue_table} WHERE entity = '%s' AND TYPE='%s'";
         $prepared_query = $wpdb->prepare($query, 'autors', 'store_autors');
-        try {
-            // Execute the query and get the results.
-			// ARRAY_A returns the result as an associative array.
-            $results = $wpdb->get_results($prepared_query, ARRAY_A);
-            return $results;
-        } catch (\Exception $exception) {
-            // Log the error to WordPress debug log.
-            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Function getAuthorsFromGeslibLines: ' .$exception->getMessage(), 'geslib');
-            return false;
-        }
+        // Execute the query and get the results.
+		// ARRAY_A returns the result as an associative array.
+        $results = DatabaseGuard::guard($wpdb->get_results($prepared_query, ARRAY_A), __METHOD__, 'geslib');
+        return is_array($results) ? $results : [];
     }
 
 	/**
@@ -151,7 +142,7 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
      * Get Editorials from Geslib Lines
      *
      * @global wpdb $wpdb WordPress database abstraction object.
-     * @return mixed Array of authors or false on failure.
+     * @return mixed Array of authors, or an empty array on failure.
      */
     public function getEditorialsFromGeslibLines(): mixed {
         global $wpdb;
@@ -160,16 +151,10 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
         $query = "SELECT * FROM {$queue_table} WHERE type='store_lines' AND entity = '%s' AND TYPE='%s'";
         $prepared_query = $wpdb->prepare($query, 'editorial', 'store_editorial');
 
-        try {
-            // Execute the query and get the results.
-			// ARRAY_A returns the result as an associative array.
-            $results = $wpdb->get_results($prepared_query, ARRAY_A);
-            return $results;
-        } catch (\Exception $exception) {
-            // Log the error to WordPress debug log.
-            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Function getEditorialsFromGeslibLines: ' .$exception->getMessage(), 'geslib');
-            return false;
-        }
+        // Execute the query and get the results.
+		// ARRAY_A returns the result as an associative array.
+        $results = DatabaseGuard::guard($wpdb->get_results($prepared_query, ARRAY_A), __METHOD__, 'geslib');
+        return is_array($results) ? $results : [];
     }
 
     /**
@@ -177,7 +162,7 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
      * Get Colecciones from Geslib Lines
      *
      * @global wpdb $wpdb WordPress database abstraction object.
-     * @return mixed Array of colecciones or false on failure.
+     * @return mixed Array of colecciones, or an empty array on failure.
      */
     public function getColeccionesFromGeslibLines(): mixed {
         global $wpdb;
@@ -186,16 +171,10 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
         $query = "SELECT * FROM {$queue_table} WHERE type='store_lines' AND entity = '%s' AND TYPE='%s'";
         $prepared_query = $wpdb->prepare($query, 'coleccion', 'store_colecciones');
 
-        try {
-            // Execute the query and get the results.
-			// ARRAY_A returns the result as an associative array.
-            $results = $wpdb->get_results($prepared_query, ARRAY_A);
-            return $results;
-        } catch (\Exception $exception) {
-            // Log the error to WordPress debug log.
-            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,'Function getColeccionesFromGeslibLines: ' . $exception->getMessage(), 'geslib');
-            return false;
-        }
+        // Execute the query and get the results.
+		// ARRAY_A returns the result as an associative array.
+        $results = DatabaseGuard::guard($wpdb->get_results($prepared_query, ARRAY_A), __METHOD__, 'geslib');
+        return is_array($results) ? $results : [];
     }
 
 
@@ -204,7 +183,7 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
      * Get Categories from Geslib Lines
      *
      * @global wpdb $wpdb WordPress database abstraction object.
-     * @return mixed Array of categories or false on failure.
+     * @return mixed Array of categories, or an empty array on failure.
      */
     public function getCategoriesFromGeslibLines(): mixed {
         global $wpdb;
@@ -213,14 +192,9 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
         $query = "SELECT * FROM {$queue_table} WHERE  entity = '%s' AND type='%s'";
         $prepared_query = $wpdb->prepare($query, 'product_cat', 'store_categories');
 
-        try {
-            // Execute the query and get the results.
-			// ARRAY_A returns the result as an associative array.
-            return $wpdb->get_results($prepared_query, ARRAY_A);
-        } catch (\Exception $exception) {
-            // Log the error to WordPress debug log.
-            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Function getCategoriesFromGeslibLines: ' . $exception->getMessage(), 'geslib');
-            return false;
-        }
+        // Execute the query and get the results.
+		// ARRAY_A returns the result as an associative array.
+        $results = DatabaseGuard::guard($wpdb->get_results($prepared_query, ARRAY_A), __METHOD__, 'geslib');
+        return is_array($results) ? $results : [];
     }
 }
