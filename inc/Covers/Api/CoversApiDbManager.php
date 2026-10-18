@@ -5,6 +5,7 @@ namespace Inc\Covers\Api;
 require_once(ABSPATH . 'wp-admin/includes/image.php');
 
 use Inc\Biblio\Api\BiblioApi;
+use Inc\Biblio\Api\DatabaseGuard;
 use Inc\Biblio\Api\TableConstants;
 use WP_Query;
 
@@ -90,13 +91,11 @@ class CoversApiDbManager {
             $this->biblioApi->debug_log( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Data is empty. Skipping file creation." , 'covers');
             return false;
         }
-        try {
-            file_put_contents( $filepath, $data );
-            $this->biblioApi->debug_log( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "File created successfully.".$filepath , 'covers');
-        } catch ( \Exception $exception ) {
-            $this->biblioApi->debug_log( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Could not create file.". $exception->getMessage() , 'covers');
+        if ( false === file_put_contents( $filepath, $data ) ) {
+            $this->biblioApi->debug_log( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Could not create file.".$filepath , 'covers');
             return false;
         }
+        $this->biblioApi->debug_log( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "File created successfully.".$filepath , 'covers');
 		return $this->insertAttachment( $filename, $filepath );
     }
 
@@ -225,7 +224,6 @@ class CoversApiDbManager {
     public function countAllProducts(): int {
         global $wpdb;
         $this->biblioApi->debug_log(__CLASS__.':'.__LINE__.' '.__FUNCTION__, "Inside countAllProducts.", 'covers');
-        try {
             /* $products = wc_get_products([
                 'status' => 'publish',
                 'limit' => -1,
@@ -236,16 +234,12 @@ class CoversApiDbManager {
                 return 0;
             }
             $count = count($products); */
-            $count = (int) $wpdb->get_var(
+            $count = (int) DatabaseGuard::guard($wpdb->get_var(
 					"SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'product' AND post_status = 'publish'"
-					);
+					), __METHOD__, 'covers');
             return $count;
             $this->biblioApi->debug_log(__CLASS__.':'.__LINE__.' '.__FUNCTION__, "Product count: $count", 'covers');
             return $count;
-        } catch (\Exception $e) {
-            $this->biblioApi->debug_log(__CLASS__.':'.__LINE__.' '.__FUNCTION__, "Exception: ".$e->getMessage(), 'covers');
-            return 0;
-        }
     }
 
     /**
