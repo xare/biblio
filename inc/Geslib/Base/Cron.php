@@ -50,14 +50,32 @@ class Cron extends BaseController {
 
     public function register() {
         if ( ! wp_next_scheduled( 'geslib_cron_event' ) ) {
-            wp_schedule_event( time(), 'twohourly', 'geslib_cron_event' );
+            $this->schedule_twohourly( 'geslib_cron_event' );
         }
         if ( ! wp_next_scheduled( 'geslib_removeUncategorized_cron_event' ) ) {
-            wp_schedule_event( time(), 'twohourly', 'geslib_removeUncategorized_cron_event' );
+            $this->schedule_twohourly( 'geslib_removeUncategorized_cron_event' );
         }
 
         add_action( 'geslib_cron_event', [ $this, 'geslib_cron_function' ] );
         add_action( 'geslib_removeUncategorized_cron_event', [ $this, 'geslib_remove_uncategorized_cron_function' ] );
+    }
+
+    /**
+     * Schedule a twohourly event, logging the WP_Error on failure instead of
+     * silently dropping it the way a bare wp_schedule_event() call does.
+     *
+     * @param string $hook Cron hook name.
+     * @return void
+     */
+    private function schedule_twohourly( string $hook ): void {
+        $result = wp_schedule_event( time(), 'twohourly', $hook, [], true );
+        if ( is_wp_error( $result ) ) {
+            ( new BiblioApi() )->getLogger()->error(
+                'ERROR ' . __CLASS__ . ':' . __LINE__ . ' ' . __FUNCTION__,
+                "Failed to schedule {$hook}: " . $result->get_error_message(),
+                'geslib'
+            );
+        }
     }
 
     /** Heartbeat staleness threshold in seconds — if no heartbeat in this window, lock is considered dead */
