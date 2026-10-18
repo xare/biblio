@@ -25,9 +25,9 @@ class GeslibApiStoreData {
      * and saving it into the local database or storage system. It may include data validation,
      * transformation, and error handling as required by the application.
      *
-     * @return void
+     * @return bool  True when every batch was enqueued; false on the first insert failure.
      */
-    public function storeEditorials() {
+    public function storeEditorials(): bool {
         $geslibApiDbManager = new GeslibApiDbManager;
         $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
         $geslibApiDbLinesManager = new GeslibApiDbLinesManager;
@@ -47,10 +47,18 @@ class GeslibApiStoreData {
             $item['data'] = $editorial['content'];
             $batch[] = $item;
             if ( count( $batch ) >= $batch_size ) {
-                $geslibApiDbQueueManager->insertEditorialsIntoQueue( $batch );
+                if ( ! $geslibApiDbQueueManager->insertEditorialsIntoQueue( $batch ) ) {
+                    return false;
+                }
                 $batch = [];
             }
         }
+        if ( ! empty( $batch ) ) {
+            if ( ! $geslibApiDbQueueManager->insertEditorialsIntoQueue( $batch ) ) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -61,9 +69,9 @@ class GeslibApiStoreData {
      * 
      * Store Authors into geslib_queue('autors')
      *
-     * @return void
+     * @return bool  True when every batch was enqueued; false on the first insert failure.
      */
-    public function storeAuthors() {
+    public function storeAuthors(): bool {
         $geslibApiDbLinesManager = new GeslibApiDbLinesManager;
         $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
         $geslibApiDbManager = new GeslibApiDbManager;
@@ -82,12 +90,17 @@ class GeslibApiStoreData {
             $item['data'] = $author['content'];
             $batch[] = $item;
             if ( count( $batch ) >= $batch_size ) {
-                $geslibApiDbQueueManager->insertAuthorsIntoQueue( $batch );
+                if ( ! $geslibApiDbQueueManager->insertAuthorsIntoQueue( $batch ) ) {
+                    return false;
+                }
                 $batch = [];
             }
         }
         if(count($batch) > 0) {
-            $geslibApiDbQueueManager->insertAuthorsIntoQueue( $batch );
+            if ( ! $geslibApiDbQueueManager->insertAuthorsIntoQueue( $batch ) ) {
+                return false;
+            }
         }
+        return true;
     }
 }
