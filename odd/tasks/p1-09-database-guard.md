@@ -129,24 +129,28 @@ passes `0` through as success, but `: bool` coercion turns it into `false`. Use
 - Authored lines (additions + deletions, generated files excluded):
   source 594 (238 add / 356 del across 8 modified files) + `DatabaseGuard` 71 + tests 993
   (251 + 434 + 308) + this document 127 = **1785 authored lines**.
-- Planned work-unit commits (tests kept with the code they verify; docs with the change):
-  1. `feat(biblio): add DatabaseGuard to detect real $wpdb failures` — class + its tests (~322).
-  2. `refactor(geslib): replace dead $wpdb try/catch with DatabaseGuard` — 4 Geslib files + sweep tests (~856).
-  3. `refactor(covers): replace dead $wpdb try/catch with DatabaseGuard` — Covers x3 + trait + tests + this doc (~607).
+- Work-unit commits (tests kept with the code they verify; docs with the change) — **all made**:
+  1. `2d15343b` `feat(biblio): add DatabaseGuard to detect real $wpdb failures` — class + its tests (~322).
+  2. `df1a1f84` `refactor(geslib): replace dead $wpdb try/catch with DatabaseGuard` — 4 Geslib files + sweep tests (~856).
+  3. `a3437734` `refactor(covers): replace dead $wpdb try/catch with DatabaseGuard` — Covers x3 + trait + tests + this doc (~607).
 - **Over the ~400 authored-line delivery budget.** One honest slicing pass done; units 2 and 3
   cannot shrink further without splitting a single test file away from the code it verifies.
-  Delivery strategy (`size:exception` vs chained PRs) is an open **user decision** — nothing
-  has been pushed, so commits can be regrouped before any PR.
+- **Delivery decided (user): `exception-ok` — a single PR carrying the whole branch with a
+  maintainer-approved `size:exception`.** Nothing has been pushed; push/PR remains the user's
+  explicit call.
 
 ## Authorized scope
 Repository `/var/www/html/larepartidora/wp-content/plugins/biblio`, branch
-`fix/f-01-failure-propagation` (4 commits already present, base `a6101533`). Delivery (push/PR)
+`fix/f-01-failure-propagation` (7 commits, base `a6101533`). Delivery (push/PR)
 remains the user's decision. The unrelated working-tree deletion
 `assets/js/larepartidora.code-workspace` must never be staged.
 
 ## Acceptance criteria
 - Zero `catch (\Exception)` blocks whose try body is exclusively non-throwing `$wpdb` calls.
-- The 23 `other` catches are byte-identical after the change (verified by diff).
+- The 24 catches left in place are byte-identical after the change (verified by empty
+  `git diff 306c8d06..HEAD` on every file that still has a catch: 22 `other` + the 2 broken
+  logger managers). Count proof: 73 catches at `a6101533` → 49 swept → 24 remain, plus
+  DatabaseGuard's own legitimate `catch (\Exception)` (it wraps the logger, not `$wpdb`).
 - A forced DB failure produces an `ERROR` line in the module's `debug-{type}-{date}.log`.
 - `guard()` returns `false` on failure and the original value on success; no new `TypeError` in
   any `: array`/`: int` path.
@@ -159,10 +163,15 @@ is untouched · live `wp eval` probe forcing a failure and reading back the log 
 
 ## Progress
 - T0–T4 done and verified (see checklist for evidence per task).
-- Final state: **dead `$wpdb` catches remaining: 0** plugin-wide. The 22 legitimately-throwing
-  (`other`) catches are byte-identical, verified by empty `git diff --stat` on those files.
+- Final state: **dead `$wpdb` catches remaining: 0** plugin-wide. The 24 catches left in place
+  are byte-identical, verified by empty `git diff 306c8d06..HEAD` on all of them (22 `other` +
+  2 broken logger managers deliberately untouched).
 - Verification of record: `./vendor/bin/phpunit` → `Tests: 54, Assertions: 93,
   PHPUnit Deprecations: 1` (baseline 29/68 + 25 new tests; the single deprecation is the
   pre-existing phpunit.xml schema 9.5 one); `php -l` clean on all 9 changed source files;
   live forced-failure probe produced real `ERROR` log lines.
-- Next step: T5 — three work-unit commits, RDD assess, memory, report.
+- **T5 done.** Three work-unit commits made (`2d15343b`, `df1a1f84`, `a3437734`); RDD assess
+  on the slice returned `medium` / `slice_budget_reached` (1826 lines, review_due true) and the
+  preflight STATUS stopped at `managed_assets_outdated` whose `gentle-ai sync` continuation is
+  terminally unavailable on this runtime (OpenCode version unsupported) — no blind retry,
+  delivery stays unmanaged under ordinary repo policy. Memory saved, all conflicts judged.
