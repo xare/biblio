@@ -49,15 +49,55 @@ class Cron extends BaseController {
     const TIME_LIMIT = 16000;
 
     public function register() {
-        if ( ! wp_next_scheduled( 'geslib_cron_event' ) ) {
-            $this->schedule_twohourly( 'geslib_cron_event' );
-        }
-        if ( ! wp_next_scheduled( 'geslib_removeUncategorized_cron_event' ) ) {
-            $this->schedule_twohourly( 'geslib_removeUncategorized_cron_event' );
-        }
+        $this->ensure_twohourly( 'geslib_cron_event' );
+        $this->ensure_twohourly( 'geslib_removeUncategorized_cron_event' );
 
         add_action( 'geslib_cron_event', [ $this, 'geslib_cron_function' ] );
         add_action( 'geslib_removeUncategorized_cron_event', [ $this, 'geslib_remove_uncategorized_cron_function' ] );
+    }
+
+    /**
+     * Guarantee a hook runs on the twohourly schedule, migrating away from any
+     * interval an earlier release left behind.
+     *
+     * The migration is necessary because a stale event still counts as
+     * "scheduled": a plain wp_next_scheduled() guard skips it and keeps the old
+     * interval forever (geslib_cron_event sat at twicedaily/12h in production
+     * exactly this way). Everything here is conditional on the stored interval -
+     * register() runs on every admin request, so an unconditional
+     * clear-and-reschedule would push the next run out indefinitely.
+     *
+     * @param string $hook Cron hook name.
+     * @return void
+     */
+    private function ensure_twohourly( string $hook ): void {
+        $event = wp_get_scheduled_event( $hook );
+
+        if ( $event && 'twohourly' === $event->schedule ) {
+            return;
+        }
+
+        if ( $event ) {
+            // WP stores cron entries per timestamp and does not dedupe, so a
+            // failed removal followed by a fresh schedule would leave two events
+            // behind and make the hook fire twice. Leaving the stale one alone
+            // is the safer failure mode.
+            if ( ! wp_unschedule_event( $event->timestamp, $hook ) ) {
+                ( new BiblioApi() )->getLogger()->error(
+                    'ERROR ' . __CLASS__ . ':' . __LINE__ . ' ' . __FUNCTION__,
+                    "Could not unschedule {$hook} on '{$event->schedule}' - leaving it unchanged",
+                    'geslib'
+                );
+                return;
+            }
+            ( new BiblioApi() )->getLogger()->info(
+                'INFO ' . __CLASS__ . ':' . __LINE__ . ' ' . __FUNCTION__,
+                "Migrated {$hook} from '{$event->schedule}' to twohourly",
+                'geslib'
+            );
+        }
+
+        $this->schedule_twohourly( $hook );
     }
 
     /**
