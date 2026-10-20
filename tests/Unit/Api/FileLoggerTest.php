@@ -64,7 +64,7 @@ class FileLoggerTest extends UnitTestCase
     }
 
     /**
-     * Test debug method writes correct content
+     * Test debug method writes the single-line format
      *
      * @return void
      */
@@ -76,9 +76,10 @@ class FileLoggerTest extends UnitTestCase
         $log_file = $this->temp_dir . '/debug-biblio-' . date('Y-m-d') . '.log';
         $content = file_get_contents($log_file);
 
-        $this->assertStringContainsString('DEBUG', $content);
-        $this->assertStringContainsString('TestTitle', $content);
-        $this->assertStringContainsString('Test message', $content);
+        $this->assertMatchesRegularExpression(
+            '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \[DEBUG\] \[biblio\] TestTitle: Test message$/',
+            trim($content)
+        );
     }
 
     /**
@@ -149,5 +150,94 @@ class FileLoggerTest extends UnitTestCase
         // Should have two lines
         $lines = count(array_filter(explode("\n", $content)));
         $this->assertGreaterThanOrEqual(2, $lines);
+    }
+
+    /**
+     * Test level, type and title placement on the single log line
+     *
+     * @return void
+     */
+    public function testLevelTypeAndTitlePlacement(): void
+    {
+        $logger = new FileLogger($this->temp_dir);
+        $logger->error(
+            'Inc\Covers\Api\CoversApi:256 fetch_cover',
+            'Connection exception: cURL error 28',
+            'covers'
+        );
+
+        $log_file = $this->temp_dir . '/debug-covers-' . date('Y-m-d') . '.log';
+        $content = file_get_contents($log_file);
+
+        $this->assertMatchesRegularExpression(
+            '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \[ERROR\] \[covers\] '
+            . preg_quote('Inc\Covers\Api\CoversApi:256 fetch_cover', '/')
+            . ': '
+            . preg_quote('Connection exception: cURL error 28', '/')
+            . '$/',
+            trim($content)
+        );
+    }
+
+    /**
+     * Test a multiline message collapses into a single physical line
+     *
+     * @return void
+     */
+    public function testMultilineMessageCollapsesToPipes(): void
+    {
+        $logger = new FileLogger($this->temp_dir);
+        $logger->info('Multi', "first line\nsecond line\r\nthird line", 'covers');
+
+        $log_file = $this->temp_dir . '/debug-covers-' . date('Y-m-d') . '.log';
+        $content = file_get_contents($log_file);
+
+        $this->assertStringContainsString(
+            'first line | second line | third line',
+            $content
+        );
+        $lines = explode("\n", trim($content));
+        $this->assertCount(1, $lines);
+    }
+
+    /**
+     * Test an empty title produces no "title:" segment
+     *
+     * @return void
+     */
+    public function testEmptyTitleOmitsTitleSegment(): void
+    {
+        $logger = new FileLogger($this->temp_dir);
+        $logger->info('', 'Something happened', 'covers');
+
+        $log_file = $this->temp_dir . '/debug-covers-' . date('Y-m-d') . '.log';
+        $content = trim(file_get_contents($log_file));
+
+        $this->assertMatchesRegularExpression(
+            '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \[INFO\] \[covers\] Something happened$/',
+            $content
+        );
+        $this->assertStringNotContainsString('] :', $content);
+    }
+
+    /**
+     * Test messages over the cap are truncated with the marker
+     *
+     * @return void
+     */
+    public function testLongMessageIsTruncatedWithMarker(): void
+    {
+        $logger = new FileLogger($this->temp_dir);
+        $logger->debug('CapTitle', str_repeat('A', 3000));
+
+        $log_file = $this->temp_dir . '/debug-biblio-' . date('Y-m-d') . '.log';
+        $line = trim(file_get_contents($log_file));
+
+        $this->assertStringEndsWith(' ... [truncated, 3000 bytes]', $line);
+        // The cut keeps exactly 2000 bytes of the sanitized message.
+        $this->assertMatchesRegularExpression(
+            '/\[DEBUG\] \[biblio\] CapTitle: A{2000}$/',
+            substr($line, 0, -strlen(' ... [truncated, 3000 bytes]'))
+        );
     }
 }

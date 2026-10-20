@@ -13,6 +13,13 @@ namespace Inc\Biblio\Api;
 class FileLogger implements LoggerInterface
 {
     /**
+     * Maximum number of bytes kept for the message part of one entry.
+     * Longer messages are cut and marked with a truncation suffix so a
+     * single entry always stays on one physical line.
+     */
+    private const MAX_MESSAGE_BYTES = 2000;
+
+    /**
      * The logs directory path
      *
      * @var string
@@ -87,6 +94,9 @@ class FileLogger implements LoggerInterface
     /**
      * Internal log method
      *
+     * Writes ONE physical line per entry:
+     * `Y-m-d H:i:s [LEVEL] [type] title: message` (title omitted when empty).
+     *
      * @param string $level    The log level.
      * @param string $title    The log title/category.
      * @param string $message  The log message.
@@ -103,16 +113,43 @@ class FileLogger implements LoggerInterface
             date('Y-m-d')
         );
 
-        $formatted_message = sprintf(
-            '[%s - %s - %s] %s %s %s',
-            $level,
-            $type,
-            $title,
-            date('Y-m-d H:i:s'),
-            PHP_EOL,
-            $message
-        );
+        $title   = $this->sanitize($title);
+        $message = $this->sanitize($message);
 
-        file_put_contents($filepath, $formatted_message . PHP_EOL, FILE_APPEND);
+        $message_bytes = strlen($message);
+        if ($message_bytes > self::MAX_MESSAGE_BYTES) {
+            // mb_strcut cuts at a byte boundary without splitting a
+            // multi-byte character; substr is the plain fallback.
+            $cut = function_exists('mb_strcut')
+                ? mb_strcut($message, 0, self::MAX_MESSAGE_BYTES, 'UTF-8')
+                : substr($message, 0, self::MAX_MESSAGE_BYTES);
+            if ($cut === '' && $message !== '') {
+                $cut = substr($message, 0, self::MAX_MESSAGE_BYTES);
+            }
+            $message = $cut . ' ... [truncated, ' . $message_bytes . ' bytes]';
+        }
+
+        $line = sprintf('%s [%s] [%s]', date('Y-m-d H:i:s'), $level, $type);
+        if ($title !== '') {
+            $line .= ' ' . $title . ':';
+        }
+        $line .= ' ' . $message;
+
+        file_put_contents($filepath, $line . PHP_EOL, FILE_APPEND | LOCK_EX);
+    }
+
+    /**
+     * Squeeze a raw string into a single log-safe line: trim it, collapse
+     * every run of line breaks into " | " and drop control characters.
+     *
+     * @param string $value Raw title or message.
+     *
+     * @return string Sanitized single-line value.
+     */
+    private function sanitize(string $value): string
+    {
+        $value = trim($value);
+        $value = (string) preg_replace('/\R+/', ' | ', $value);
+        return (string) preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', '', $value);
     }
 }
