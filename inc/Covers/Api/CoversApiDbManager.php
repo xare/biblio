@@ -88,14 +88,14 @@ class CoversApiDbManager {
     public function attachFile( string $filepath, mixed $data, string $filename ): mixed {
         // Validate data before proceeding
         if ( empty( $data ) ) {
-            $this->biblioApi->debug_log( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Data is empty. Skipping file creation." , 'covers');
+            $this->biblioApi->getLogger()->error( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "attach_file: data is empty path=" . $filepath , 'covers');
             return false;
         }
         if ( false === file_put_contents( $filepath, $data ) ) {
-            $this->biblioApi->debug_log( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Could not create file.".$filepath , 'covers');
+            $this->biblioApi->getLogger()->error( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "attach_file: could not create file path=" . $filepath , 'covers');
             return false;
         }
-        $this->biblioApi->debug_log( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "File created successfully.".$filepath , 'covers');
+        $this->biblioApi->getLogger()->info( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "attach_file: path=" . $filepath . " ok" , 'covers');
 		return $this->insertAttachment( $filename, $filepath );
     }
 
@@ -139,11 +139,16 @@ class CoversApiDbManager {
     /**
   	 * set_featured_image_for_product
   	 *
+	 * The $channel selects the log file for the lines emitted here: the
+	 * covers cron uses the default 'covers'; the missing-covers cron passes
+	 * 'missingcovers' so entries do not leak into the wrong channel.
+	 *
   	 * @param  mixed $file_id
   	 * @param  mixed $ean
+	 * @param  string $channel Log channel (covers|missingcovers).
   	 * @return void
   	 */
-  	public function set_featured_image_for_product( $file_id, $ean ): void {
+  	public function set_featured_image_for_product( $file_id, $ean, string $channel = 'covers' ): void {
 		$args = array(
 			'post_type' => 'product',
 			'meta_query' => array(
@@ -154,23 +159,21 @@ class CoversApiDbManager {
 			),
 		);
     	$products = get_posts($args);
-        $this->biblioApi->getLogger()->debug(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "File ID: " . $file_id . "." , 'missingcovers');
-        $this->biblioApi->getLogger()->debug(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Nº of products: " . count($products) . "." , 'missingcovers');
+		$this->biblioApi->getLogger()->info(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "set_featured_image: ean=" . $ean . " products=" . count($products) , $channel);
 		foreach ($products as $product) {
 			$product_id = $product->ID;
-            
+
 			// Check if a thumbnail is already set for the product
 			if (get_post_thumbnail_id($product_id)) {
-                $this->biblioApi->getLogger()->debug("", "Product ID: " . $product->ID . " already has a featured image. Skipping." , 'missingcovers');
+				$this->biblioApi->getLogger()->debug(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "set_featured_image: id=" . $product_id . " skipped already has thumbnail" , $channel);
 				continue; // Skip setting the featured image if already set
 			}
-            $this->biblioApi->getLogger()->debug("", "Setting image for " . $product->post_title . " - Product ID:" . $product->ID . "With file ID " . $file_id, 'missingcovers');
 			try {
-                $isset = set_post_thumbnail($product_id, $file_id);
-                $this->biblioApi->getLogger()->debug("", "Set as post thumbnail:" . var_export($isset, true), 'missingcovers');
-            } catch(\Exception $e) {
-                $this->biblioApi->getLogger()->debug("ERROR", "ERROR at SETTING AN IMAGE: " . $e->getMessage() . ". Failed to set image for " . $product->post_title . " - Product ID:" . $product->ID, 'missingcovers');
-            }
+				$isset = set_post_thumbnail($product_id, $file_id);
+				$this->biblioApi->getLogger()->info(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "set_featured_image: id=" . $product_id . " file_id=" . $file_id . " set=" . ( $isset ? 'yes' : 'no' ), $channel);
+			} catch(\Exception $e) {
+				$this->biblioApi->getLogger()->error(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "set_featured_image: id=" . $product_id . " file_id=" . $file_id . " error=" . $e->getMessage(), $channel);
+			}
 		}
 	}
 
@@ -206,7 +209,7 @@ class CoversApiDbManager {
                     update_post_meta($product_id, 'covers_url', $url);
                     return true;
                 } catch (\Exception $e) {
-                    $this->biblioApi->debug_log( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Failed to update the covers_url custom field: ".$e->getMessage() , 'covers');
+                    $this->biblioApi->getLogger()->error( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "set_covers_url: update failed ean=" . $ean . " error=" . $e->getMessage() , 'covers');
                     return false;
                 }
             }
@@ -223,7 +226,6 @@ class CoversApiDbManager {
      */
     public function countAllProducts(): int {
         global $wpdb;
-        $this->biblioApi->debug_log(__CLASS__.':'.__LINE__.' '.__FUNCTION__, "Inside countAllProducts.", 'covers');
             /* $products = wc_get_products([
                 'status' => 'publish',
                 'limit' => -1,
@@ -237,8 +239,6 @@ class CoversApiDbManager {
             $count = (int) DatabaseGuard::guard($wpdb->get_var(
 					"SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'product' AND post_status = 'publish'"
 					), __METHOD__, 'covers');
-            return $count;
-            $this->biblioApi->debug_log(__CLASS__.':'.__LINE__.' '.__FUNCTION__, "Product count: $count", 'covers');
             return $count;
     }
 
@@ -267,7 +267,7 @@ class CoversApiDbManager {
             wp_update_attachment_metadata( $attachment_id, $attachment_metadata );
             return $attachment_id ;
         } catch(\Exception $exception) {
-            $this->biblioApi->debug_log( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Failed to insert attachment: ".$exception->getMessage() , 'covers');
+            $this->biblioApi->getLogger()->error( __CLASS__. ':'.__LINE__.' '.__FUNCTION__, "insert_attachment: failed filename=" . $filename . " error=" . $exception->getMessage() , 'covers');
             return false;
         }
     }
@@ -318,7 +318,8 @@ class CoversApiDbManager {
      */
     public function save_cover_source_by_product_id(int $product_id, string $url): bool {
         if ($product_id <= 0 || empty($url)) {
-            $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Invalid product ID or URL. Product ID: $product_id, URL: $url", 'covers');
+            // Never log $url: callers pass Dilve/Cegal URLs that embed credentials.
+            $this->biblioApi->getLogger()->error(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "save_cover_source: invalid input product_id=" . $product_id . " url=" . ( empty($url) ? 'empty' : 'present' ), 'covers');
             return false;
         }
         return (bool) update_post_meta($product_id, 'covers_url', esc_url_raw($url));

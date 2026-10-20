@@ -39,7 +39,7 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
             $type, // dilve|cegal
 		];
 		if ( count( self::$coversLinesKeys ) !== count( $coversLinesValues ) ) {
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Key/value count mismatch: " . count( self::$coversLinesKeys ) . ' keys vs ' . count( $coversLinesValues ) . ' values', 'covers');
+			$this->biblioApi->getLogger()->error(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "insert_line: key/value count mismatch keys=" . count( self::$coversLinesKeys ) . ' values=' . count( $coversLinesValues ), 'covers');
 			return false;
 		}
 		$insertArray = array_combine(self::$coversLinesKeys, $coversLinesValues);
@@ -49,7 +49,6 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
             if( $line_id ) {
                 $sql = "UPDATE $table_name SET attempts = attempts + 1 WHERE id = $line_id";
                 DatabaseGuard::guard($wpdb->query($sql), __METHOD__, 'covers');
-                $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Line with ISBN: $isbn already exists. Incrementing attempts. LINE ID: $line_id", 'covers');
                 return $line_id;
             } else {
                 $result = DatabaseGuard::guard(
@@ -62,7 +61,7 @@ class CoversApiDbLinesManager extends CoversApiDbManager {
                 if ( false === $result ) {
                     return false;
                 }
-                $this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Inserted new line with ISBN: $isbn. LINE ID: " . $wpdb->insert_id, 'covers');
+                $this->biblioApi->getLogger()->debug(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "insert_line: isbn=$isbn line_id=" . $wpdb->insert_id, 'covers');
                 return $wpdb->insert_id;
             }
 	}

@@ -92,7 +92,7 @@ class CoversApiDbLogManager extends CoversApiDbManager {
 		if ( false === $result ) {
 			return false;
 		}
-		$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'We updated the covers_log table with '.$processed_items.' scanned products.', 'covers');
+		$this->biblioApi->getLogger()->info(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'set_processed_products: n=' . $processed_items, 'covers');
 		return true;
 	}
 }

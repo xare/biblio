@@ -76,7 +76,7 @@ class CoversApi {
 		$response = wp_remote_get($query);
 
 		if ( is_wp_error( $response ) ) {
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"Error: " . $response->get_error_message() , 'covers');
+			$this->biblioApi->getLogger()->error(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "search_dilve: request failed isbn=" . $isbn . " wp_error=" . $response->get_error_message() , 'covers');
 			return false;  // In case of error return immediately.
 		 } else {
 			$body = wp_remote_retrieve_body( $response );  // Get the body of the response
@@ -171,47 +171,44 @@ class CoversApi {
 				foreach ( $xml_book->MediaFile as $media ) {
 					// Assuming $media->MediaFileTypeCode contains the code to match.
 					$mediaFileTypeCode = (string) $media->MediaFileTypeCode;
-					$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"Converted Media File Type Code: " . $mediaFileTypeCode.PHP_EOL, 'covers');
 					switch($mediaFileTypeCode) {
 						case "03":
 						case "04":
 						case "05":
 						case "06":
-							$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"Recogido imagen del libro: " . $media->MediaFileLink.PHP_EOL, 'covers');
 							if ( !isset($book["cover_url"]) || $media->MediaFileLinkTypeCode == "06" ) {
-								$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"Adding cover_url " .PHP_EOL, 'covers');
 								$book["cover_url"] = $this->get_dilve_file_url((string) $media->MediaFileLink, $isbn);
 							}
 						break;
 						case "07": break; // Nothing happens for case "07", equivalent to an empty break in switch.
 						case "08":
 							$book["image_author_url"] = (string) $this->get_dilve_file_url((string) $media->MediaFileLink, $isbn);
-							$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__," Recogido imagen del autor: " . $book["image_author_url"], 'covers');
-							$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"Formato: " . $media->MediaFileFormatCode, 'covers');
-							$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"Tipo de Enlace: " . $media->MediaFileLinkTypeCode, 'covers');
 						break;
-						case "17" :
+						case "17":
 							$book["image_publisher_url"] = (string) $this->get_dilve_file_url((string) $media->MediaFileLink, $isbn);
-							$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"Recogido logo de editorial: " . $book["image_publisher_url"], 'covers');
-							$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"Formato: " . $media->MediaFileFormatCode, 'covers');
-							$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"Tipo de Enlace: " . $media->MediaFileLinkTypeCode, 'covers');
-						case "17" :
-							$book["image_publisher_url"] = (string) $this->get_dilve_file_url((string) $media->MediaFileLink, $isbn);
-							$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"Recogido logo de editorial: " . $book["image_publisher_url"], 'covers');
-							$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"Formato: " . $media->MediaFileFormatCode, 'covers');
-							$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"Tipo de Enlace: " . $media->MediaFileLinkTypeCode, 'covers');
 						break;
-						case "51" :
+						case "51":
 							$book["preview_media_url"] = $this->get_dilve_file_url((string) $media->MediaFileLink, $isbn); // Uncommented and corrected the variable name
-							$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__," Recogido fichero de preview: " . $book["preview_media_url"], 'covers');
-							$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__," Formato: " . $media->MediaFileFormatCode, 'covers');
-							$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__," Tipo de Enlace: " . $media->MediaFileLinkTypeCode, 'covers');
 						break;
 						default:
-							// Uncomment these lines if you want to execute them in the default case
-							$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__," Tipo de medio no definido (" . $media->MediaFileTypeCode . ") para el libro con ISBN " . $isbn . "\n\n", 'covers');
+							$this->biblioApi->getLogger()->error(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "search_dilve: unknown media type=" . $mediaFileTypeCode . " isbn=" . $isbn, 'covers');
 					}
 				}
+				// One info line per product: which media URLs were extracted.
+				$media_kinds = array();
+				if ( isset($book["cover_url"]) ) {
+					$media_kinds[] = 'cover';
+				}
+				if ( isset($book["image_author_url"]) ) {
+					$media_kinds[] = 'author_image';
+				}
+				if ( isset($book["image_publisher_url"]) ) {
+					$media_kinds[] = 'publisher_logo';
+				}
+				if ( isset($book["preview_media_url"]) ) {
+					$media_kinds[] = 'preview';
+				}
+				$this->biblioApi->getLogger()->info(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "search_dilve: isbn=" . $isbn . " media=" . ( $media_kinds ? implode(',', $media_kinds) : 'none' ), 'covers');
 			}
 		} else {
 			$book = (string)$xml->error->text;
@@ -253,22 +250,20 @@ class CoversApi {
 	 */
 	public function fetch_cover( string $url, string $isbn, string $type ): mixed {
 		$query = (string) $this->get_query($type, $isbn);
-		$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Fetch cover - URL: " . $url . PHP_EOL, 'covers');
-		$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Fetch cover - Query: " . $query . PHP_EOL, 'covers');
+		// Never log $url/$query here: both embed Dilve/Cegal credentials.
+		$this->biblioApi->getLogger()->info(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "fetch_cover: type=" . $type . " isbn=" . $isbn, 'covers');
 		if ( $type == 'dilve' ) {
 			$client = new Client(['verify' => false, 'timeout' => 10.0]);
 			$coversApiDbLinesManager = new CoversApiDbLinesManager;
 			try {
 				$response = $client->get($url);
-				$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Response correctly obtained from url " . $url . PHP_EOL, 'covers');
 				return $response->getBody();
 			} catch( ConnectException $connectException ) {
 				$error = ['message'=> $connectException->getMessage()];
-				$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"Connection exception: " . $connectException->getMessage() , 'covers');
+				$this->biblioApi->getLogger()->error(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"fetch_cover: connection exception isbn=" . $isbn . " error=" . $error['message'] , 'covers');
 				$coversApiDbLinesManager->setError( $isbn, $error['message'] );
 				return false;
 			} catch ( RequestException $requestException ) {
-				$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"Request exception: " . $requestException->getMessage() , 'covers');
 				if ($requestException->getResponse() instanceof ResponseInterface) {
 					$error['statusCode'] = $requestException->getResponse()->getStatusCode();
 					if ( $error['statusCode'] === 404 ) {
@@ -281,12 +276,12 @@ class CoversApi {
 					// Handle other exceptions
 					$error['message'] = 'Error: ' . $requestException->getMessage();
 				}
-				$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,$error['message'], 'covers');
+				$this->biblioApi->getLogger()->error(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"fetch_cover: request failed isbn=" . $isbn . " error=" . $error['message'], 'covers');
 				$coversApiDbLinesManager->setError( $isbn, $error['message'] );
 				return false;
 			} catch (\Exception $exception) {
 				$error['message'] = 'Error: ' . $exception->getMessage();
-				$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $error['message'], 'covers');
+				$this->biblioApi->getLogger()->error(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "fetch_cover: exception isbn=" . $isbn . " error=" . $error['message'], 'covers');
 				$coversApiDbLinesManager->setError( $isbn, $error['message'] );
 				return false;
 			}
@@ -296,18 +291,18 @@ class CoversApi {
 			// Check if the response is an error
 			if (is_wp_error($response)) {
 				// Handle error
-				$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Something went wrong: " . $response->get_error_message() . PHP_EOL, 'covers');
+				$this->biblioApi->getLogger()->error(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "fetch_cover: request failed isbn=" . $isbn . " wp_error=" . $response->get_error_message(), 'covers');
 				return false;
 			}
 			$body = (string) wp_remote_retrieve_body($response);
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Response from API: " . $body . PHP_EOL, 'covers');
+			$this->biblioApi->getLogger()->info(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "cegal response: isbn=" . $isbn . " bytes=" . strlen($body) . " status=" . ( trim($body) === '' ? 'empty' : 'parsed' ), 'covers');
 			$xmlString = (string) wp_remote_retrieve_body( $response );
 			$xmlString = (string) preg_replace('/[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]+/', '', $xmlString);
 			$xml = simplexml_load_string( $xmlString );
 			// Additional checks to ensure the XML and expected fields are present.
 			if ( !$xml || empty( $xml->LIBRO->PORTADA->IMAGEN_PORTADA ) || empty( $xml->LIBRO->PORTADA ) ) {
-				// Handle error - log or return false
-				$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, " Error: XML or expected fields not found." . PHP_EOL, 'covers');
+				// Handle error - at most 200 chars of excerpt, never the full body
+				$this->biblioApi->getLogger()->error(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "fetch_cover: xml fields missing isbn=" . $isbn . " excerpt=" . substr($body, 0, 200), 'covers');
 				return false;
 			}
 			return [
@@ -339,8 +334,7 @@ class CoversApi {
 			$data = ($type == "cegal") ? $data['imagedata'] : $data;
 			//$data = $this->search_dilve($isbn);
 			if ( !$data ){
-				$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Data from fetch_cover does not exist.".PHP_EOL , 'covers');
-				$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $isbn. ' :Data from fetch_cover does not exist.'.PHP_EOL , 'covers');
+				$this->biblioApi->getLogger()->error(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "create_cover: no data from fetch_cover isbn=" . $isbn , 'covers');
 				return false;
 			}
 
@@ -359,22 +353,37 @@ class CoversApi {
 					'guid' => preg_replace( '/\/\d{4}\/\d{1,2}\/portadas\//', '/portadas/', $existing_file[0]->guuid ),
 				]);
 				$file_id = $existing_file[0]->ID;
-				$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $isbn. ': File: '. $file_id.' already exists.'.PHP_EOL , 'covers');
+				$this->biblioApi->getLogger()->info(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "create_cover: isbn=" . $isbn . " file_id=" . $file_id . " already exists" , 'covers');
 			} else {
 				$file_id = $coversApiDbManager->attachFile( $filepath, $data, $filename );
-				$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "THE FILE HAS BEEN ATTACHED: " . $file_id . PHP_EOL, 'covers');
+				$this->biblioApi->getLogger()->info(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "create_cover: isbn=" . $isbn . " attached file_id=" . $file_id, 'covers');
 			}
 			return ( $file_id > 0 ) ? get_post( $file_id ): false;
   	}
 
-	public function scanProducts($log_id, $batch_size = -1, $offset = 0, $type = 'dilve') {
+	/**
+	 * Scan published products without a cover and attach one from Dilve/CEGAL.
+	 *
+	 * Stats mechanism: pass an array by reference as $stats to receive the
+	 * per-call counters ['scanned','attached','invalid_ean','failed','skipped'].
+	 * The array is reset on every call. When the argument is omitted the
+	 * counters stay local. Return contract is unchanged: false only when the
+	 * candidate list is empty, otherwise a JSON string with hasMore/eans/etc.
+	 */
+	public function scanProducts($log_id, $batch_size = -1, $offset = 0, $type = 'dilve', ?array &$stats = null) {
 		global $wpdb;
 		$coversApiDbManager = new CoversApiDbManager;
-        $coversApiDbLogManager = new CoversApiDbLogManager;
-        $coversApiDbLinesManager = new CoversApiDbLinesManager;
+		$coversApiDbLogManager = new CoversApiDbLogManager;
+		$coversApiDbLinesManager = new CoversApiDbLinesManager;
+		$stats = [
+			'scanned' => 0,
+			'attached' => 0,
+			'invalid_ean' => 0,
+			'failed' => 0,
+			'skipped' => 0,
+		];
 		$products = (array) $coversApiDbManager->getProductsWithoutCover();
-		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Number of scanned products: ' . count($products) . PHP_EOL, 'covers');
-		$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Type: ' . $type . PHP_EOL, 'covers');
+		$this->biblioApi->getLogger()->info(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'scan_products: type=' . $type . ' candidates=' . count($products), 'covers');
 		if(empty($products)) return false;
 		if ( $batch_size > 0 ) {
 			$products = (array) array_slice( $products, $offset, $batch_size );
@@ -384,59 +393,69 @@ class CoversApi {
 		$totalLines = (int) $coversApiDbManager->countAllProducts();
 		$progress = 0;
 		$index = 0;
-		$index = 0;
-        foreach( $products as $product ) { 
-			//if ( $index > 100 ) break;
+		foreach( $products as $product ) {
+			$stats['scanned']++;
 			// Get ean number from each product;
-			$this->biblioApi->debug_log('INFO '.__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Scanned product: ' . var_export($product, true), 'covers');
 			if ( $product['ID'] == null ) {
-				$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Covers Scan Products] PRODUCT ID IS NULL".PHP_EOL, 'covers');
+				$this->biblioApi->getLogger()->error(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "scan_products: product id is null", 'covers');
+				$stats['failed']++;
 				continue;
 			}
-            $ean = get_post_meta( $product['ID'], '_ean', true );
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'EAN: '. $ean , 'covers');
+			$ean = get_post_meta( $product['ID'], '_ean', true );
+			// Never log the query URL: it embeds Dilve/Cegal credentials.
 			$url = (string) $this->get_query($type, $ean );
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'URL: '. $url .PHP_EOL , 'covers');
 			if ( $coversApiDbManager->hasAttachment( $product['ID'] ) ) {
-				$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'This product with EAN: '. $ean . ' has already a cover.'.PHP_EOL , 'covers');
+				$this->biblioApi->getLogger()->debug(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'skipped already covered ean=' . $ean . ' id=' . $product['ID'] , 'covers');
+				$stats['skipped']++;
 				continue;
 			}
 			if ($this->validateEAN($ean) == false) {
-				$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "INVALID EAN: " . $ean . PHP_EOL, 'covers');
+				$this->biblioApi->getLogger()->error(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'invalid ean=' . $ean . ' id=' . $product['ID'], 'covers');
+				$stats['invalid_ean']++;
 				continue;
 			}
 
 			$filepath = (string) sprintf("%s/portadas/%s", wp_upload_dir()['basedir'], $ean.'.jpg');
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "FILEPATH: " . $filepath.PHP_EOL , 'covers');
 			$line_id = $coversApiDbLinesManager->insertLinesData($log_id, $ean, $filepath, $type);
 
 			if ( $type == 'dilve' && $ean != '' ) {
 				$filepath = (string) sprintf("%s/portadas/%s", wp_upload_dir()['basedir'], $ean.'.jpg');
-				$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "FILEPATH: " . $filepath.PHP_EOL , 'covers');
 				$line_id = $coversApiDbLinesManager->insertLinesData($log_id, $ean, $filepath, $type);
-            	$book = $this->search_dilve($ean);
+				$book = $this->search_dilve($ean);
 				if ( $book && is_array($book) && isset($book['cover_url'] ) ) {
 					if ($coversApiDbManager->hasAttachment( $product['ID'] ) ) {
-						$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'Scan Products - This product has already a cover: '.$ean.PHP_EOL, 'covers');
+						$this->biblioApi->getLogger()->debug(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'skipped already covered ean=' . $ean . ' id=' . $product['ID'], 'covers');
+						$stats['skipped']++;
 						continue;
 					}
-					
+
 					$coversApiDbLinesManager->set_url_origin($line_id, $book['cover_url']);
 					$coversApiDbLinesManager->setBook($product['post_title'], $product['ID'], $line_id);
-					
+
 					if ( $cover_post = $this->create_cover( $book['cover_url'], $ean.'.jpg', 'image/jpeg', FALSE, $type ) ) {
 						$coversApiDbManager->set_featured_image_for_product($cover_post->ID, $ean);
 						$coversApiDbLinesManager->set_url_target($line_id, $product['ID']);
 						$coversApiDbManager->save_cover_source_by_product_id( (int) $product['ID'], $book['cover_url'] );
-						$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "The coverpost was properly created.".PHP_EOL, 'covers');
+						$attached_id = $cover_post->ID;
 					} else {
-						$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"The coverpost was not properly created".PHP_EOL, 'covers');
+						$attached_id = false;
 					}
+					$subtitle_note = '';
 					if ( isset($book['subtitle']) && !empty($book['subtitle']) ) {
 						update_post_meta( $product['ID'], '_subtitle', $book['subtitle'] );
-						$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "Subtitle updated from DILVE: " . $book['subtitle'] . PHP_EOL, 'covers');
+						$subtitle_note = ' subtitle=updated';
 					}
 					$coversApiDbManager->set_covers_url($ean, $book['cover_url']);
+					if ( $attached_id ) {
+						$this->biblioApi->getLogger()->info(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'attached ean=' . $ean . ' id=' . $product['ID'] . ' file_id=' . $attached_id . $subtitle_note, 'covers');
+						$stats['attached']++;
+					} else {
+						$this->biblioApi->getLogger()->error(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'failed ean=' . $ean . ' id=' . $product['ID'] . ' reason=create_cover', 'covers');
+						$stats['failed']++;
+					}
+				} else {
+					$this->biblioApi->getLogger()->error(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'failed ean=' . $ean . ' id=' . $product['ID'] . ' reason=no cover_url', 'covers');
+					$stats['failed']++;
 				}
 			} else {
 				if ($file = $this->create_cover( $url, $ean.'.jpg', 'image/jpeg', FALSE, $type ) ) {
@@ -445,31 +464,33 @@ class CoversApi {
 					$coversApiDbLinesManager->setBook($product['post_title'], $product['ID'], $line_id);
 					$coversApiDbLinesManager->set_url_target($line_id, $product['ID']);
 					$coversApiDbManager->save_cover_source_by_product_id( (int) $product['ID'], $url );
-					$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"The coverpost was properly created for product: ".$product['post_title'].PHP_EOL, 'covers');
+					$this->biblioApi->getLogger()->info(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'attached ean=' . $ean . ' id=' . $product['ID'] . ' file_id=' . $file->ID, 'covers');
+					$stats['attached']++;
 				} else {
-					$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"The coverpost was not properly created".PHP_EOL, 'covers');
+					$this->biblioApi->getLogger()->error(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'failed ean=' . $ean . ' id=' . $product['ID'] . ' reason=create_cover', 'covers');
+					$stats['failed']++;
 				}
 				$coversApiDbManager->set_covers_url($ean, $url);
 			}
 			$coversApiDbLogManager->setLogStatus($log_id, 'processing');
 			$response[] = [ 'id' => $product['ID'] ];
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"Offset now: ". $offset * ($index + 1).PHP_EOL , 'covers');
 			$progress = ( $offset * ($index + 1) / $totalLines ) * 100;
-			$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__,"Progress now: ". $progress.PHP_EOL , 'covers');
 			array_push($eans, $ean);
 			$index++;
-        }
+		}
 		$response['hasMore'] = $hasMore;
 		$response['eans'] = $eans;
 		$response['message'] = "[BIBLIO - Covers Api] " . $batch_size . " books have been processed.";
-		$this->biblioApi->debug_log(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, $batch_size . " books have been processed.".PHP_EOL , 'covers');
+		if ( $stats['scanned'] > 0 ) {
+			$this->biblioApi->getLogger()->info(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'scan_products: processed=' . $stats['scanned'] . ' type=' . $type, 'covers');
+		}
 		$response['progress'] = number_format($progress, 2)." %";
 		if ( $hasMore == false ) {
 			$coversApiDbLogManager->setLogStatus($log_id, 'processed');
 			$coversApiDbLogManager->set_processed_products($log_id, $offset + $index);
 		}
-        return json_encode( $response );
-    }
+		return json_encode( $response );
+	}
 
 	function validateEAN($ean) {
 		// Check if the EAN is a valid length and contains only digits
@@ -499,8 +520,24 @@ class CoversApi {
 		return $checkDigit == $digits[12];
 	}
 
-	public function attach_local_missing_covers(){
+	/**
+	 * Attach locally staged cover files (uploads/img) as featured images.
+	 *
+	 * Stats mechanism: pass an array by reference as $stats to receive the
+	 * per-call counters ['candidates','found','attached','already','missing','failed'].
+	 * The array is reset on every call. When the argument is omitted the
+	 * counters stay local. Return value remains void.
+	 */
+	public function attach_local_missing_covers(?array &$stats = null){
 		$coversApiDbManager = new CoversApiDbManager;
+		$stats = [
+			'candidates' => 0,
+			'found' => 0,
+			'attached' => 0,
+			'already' => 0,
+			'missing' => 0,
+			'failed' => 0,
+		];
 		// Get all products with EAN meta key that do not have a cover image
 		$args = array(
 			'post_type' => 'product',
@@ -517,38 +554,35 @@ class CoversApi {
 			'posts_per_page' => -1, // Get all products
 		);
 		$products = get_posts($args);
-		$this->biblioApi->getLogger()->debug(__CLASS__. ':'.__LINE__.' '.__FUNCTION__ , "Number of books without cover: " . count($products) . " .", "missingcovers");
+		$stats['candidates'] = count($products);
+		$this->biblioApi->getLogger()->info(__CLASS__. ':'.__LINE__.' '.__FUNCTION__ , "missing_covers: candidates=" . count($products), "missingcovers");
 		foreach ($products as $product) {
-			$this->biblioApi->getLogger()->debug("", "|**** BOOK ****" . $product->post_title . "(". $product->ID . ") *******|", "missingcovers");
 			$originalean = get_post_meta($product->ID, '_ean', true);
-			$this->biblioApi->getLogger()->debug("", "|**** ORIGINAL EAN **** " . $originalean . " *******|", "missingcovers");
 			$ean = substr($originalean, 0, -1);
-			$this->biblioApi->getLogger()->debug("", "|**** SUBSTRACTED EAN **** " . $ean . " *******|", "missingcovers");
 			// Check if the $ean. '.jpg' file exists in a given folder of the uploads directory.
 			$uploads = wp_upload_dir();
 			$uploads_dir = $uploads['basedir'] . '/img/';  
 			$subfolder = substr($ean, 0, 7);
-        	$filename_jpg = $ean . '.jpg';
-        	$filename_JPG = $ean . '.JPG';
+			$filename_jpg = $ean . '.jpg';
+			$filename_JPG = $ean . '.JPG';
 
-        	$filepath_jpg = $uploads_dir . $subfolder . '/' . $filename_jpg;
-        	$filepath_JPG = $uploads_dir . $subfolder . '/' . $filename_JPG;
-			$this->biblioApi->getLogger()->debug("", "Looking for file: " . $filepath_jpg . " or " . $filepath_JPG . PHP_EOL, "missingcovers");
+			$filepath_jpg = $uploads_dir . $subfolder . '/' . $filename_jpg;
+			$filepath_JPG = $uploads_dir . $subfolder . '/' . $filename_JPG;
 			// If the file exists, set it as the featured image for the product.
 			if (file_exists($filepath_jpg)) {
-            	$filepath = $filepath_jpg;
-            	$filename = $filename_jpg;
+				$filepath = $filepath_jpg;
+				$filename = $filename_jpg;
 			} elseif (file_exists($filepath_JPG)) {
 				$filepath = $filepath_JPG;
 				$filename = $filename_JPG;
 			} else {
-				$this->biblioApi->getLogger()->debug("" , "File not uploaded via geslib for ean " . $originalean. " book " . $product->post_title . " [" . $product->ID . "] : " . $filepath_jpg . " or " . $filepath_JPG . PHP_EOL, "missingcovers");
+				$this->biblioApi->getLogger()->info(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "missing_covers: id=" . $product->ID . " ean=" . $originalean . " file=absent", "missingcovers");
+				$stats['missing']++;
 				continue;
 			}
-			$this->biblioApi->getLogger()->debug("", "File found for ean " . $originalean. " book " . $product->post_title . " [" . $product->ID . "] : " . $filepath . PHP_EOL, "missingcovers");
+			$stats['found']++;
 			// Check if the file is an attachment in the media library
 			$attachments = $coversApiDbManager->isAttachment($filename);
-			$this->biblioApi->getLogger()->debug("", "ATTACHMENT: ". var_export($attachments, true), "missingcovers");
 			if (count($attachments) == 0) {
 				// If the file is not an attachment, create it
 				$file = $this->create_cover(
@@ -560,17 +594,18 @@ class CoversApi {
 				);
 				if ($file) {
 					// If the file was created successfully, set it as the featured image for the product
-					$this->biblioApi->getLogger()->debug("", "Featured image set for book. " . $product->post_title . "[" . $product->ID . "]" . PHP_EOL, 'missingcovers');
-					$this->biblioApi->getLogger()->debug("", "FILE_ID ID: " . $file->ID . PHP_EOL, 'missingcovers');
-					$coversApiDbManager->set_featured_image_for_product($file->ID, $originalean);
+					$coversApiDbManager->set_featured_image_for_product($file->ID, $originalean, 'missingcovers');
+					$this->biblioApi->getLogger()->info(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "missing_covers: id=" . $product->ID . " ean=" . $originalean . " file=found → attached file_id=" . $file->ID, 'missingcovers');
+					$stats['attached']++;
 				} else {
-					$this->biblioApi->getLogger()->debug("", "Failed to create attachment for book. " . $product->post_title . "[" . $product->ID . "]" . PHP_EOL, 'missingcovers');
+					$this->biblioApi->getLogger()->error(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "missing_covers: id=" . $product->ID . " ean=" . $originalean . " file=found reason=create_cover", 'missingcovers');
+					$stats['failed']++;
 				}
 			} else {
 				// If the file is already an attachment, set it as the featured image for the product
-				$this->biblioApi->getLogger()->debug("", "Featured image already exists for for book. " . $product->post_title . "[" . $product->ID . "] with EAN: " . $ean . PHP_EOL, 'missingcovers');
-				$this->biblioApi->getLogger()->debug("", "Attachment ID: " . $attachments[0]->ID . PHP_EOL, 'missingcovers');
-				$coversApiDbManager->set_featured_image_for_product($attachments[0]->ID, $originalean);
+				$coversApiDbManager->set_featured_image_for_product($attachments[0]->ID, $originalean, 'missingcovers');
+				$this->biblioApi->getLogger()->info(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "missing_covers: id=" . $product->ID . " ean=" . $originalean . " file=found already attached attachment=" . $attachments[0]->ID, 'missingcovers');
+				$stats['already']++;
 			}
 		}
 	}
