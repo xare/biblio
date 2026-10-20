@@ -22,8 +22,8 @@ unreachable logs CoversApiDbManager:226-241).
 - **A — FileLogger format**: one physical line per entry,
   `Y-m-d H:i:s [LEVEL] [type] title: message` (title omitted when empty); sanitize newlines
   to ` | `, strip control chars, trim, defensive cap at 2000 chars
-  (`... [truncated, N bytes]`), `LOCK_EX`. Shared with geslib: geslog format changes too
-  (phase/summary CONTENT conventions untouched).
+  (  `... [truncated, N bytes]`), `LOCK_EX`. Shared with geslib: geslib log files get the new
+  line format too (their phase/summary CONTENT conventions untouched).
 - **B — Call-site content** across `inc/Covers/Api/CoversApi.php`, `CoversApiDbManager.php`,
   `CoversApiDbLinesManager.php`, `CoversApiDbLogManager.php`: no bodies/queries/var_export/
   credentials; one line per product outcome or anomaly; real levels via
@@ -75,10 +75,11 @@ independent verifier (native risk assess unavailable on this runtime → treated
 parent spot-check.
 
 ## Delivery strategy
-Chosen: `ask-on-risk`. Forecast: ~350-500 authored changed lines (borderline on the ~400
-heuristic). If the writer diff exceeds 400 authored lines, ask chain strategy
-(`stacked-to-main` vs `feature-branch-chain`) before the first commit. No PR is created
-unless the user asks.
+Chosen: `ask-on-risk`, resolved 2026-10-19 by user decision → **`stacked-to-main`**.
+Forecast was ~350-500 authored lines; actual 506 → split into two stacked PR slices:
+PR #1 = `848b3eb6` (254 lines, logger format + tests), PR #2 = `934c0e6c` + docs commit
+(351 + docs lines, covers call sites + cron summaries). Both merge to main in order.
+No PR is created unless the user asks.
 
 ## Progress
 - [x] T1 done — branch `refactor/covers-log-presentation`, doc created.
@@ -92,8 +93,28 @@ unless the user asks.
       successful Dilve attach, down from ~18-21) + parent spot-check. `./vendor/bin/phpunit`:
       58 tests / 98 assertions green, exit 0 (1 pre-existing schema-9.5 deprecation);
       `php -l` clean on all 7 files.
-- [ ] T6 commits pending — delivery decision required first (ask-on-risk: 506 > 400).
-- [ ] T7 close pending.
+- [x] T6 done — work-unit commits on `refactor/covers-log-presentation` (stacked-to-main,
+      user-chosen 2026-10-19):
+      - `848b3eb6` refactor(biblio): write one sanitized single line per log entry
+        (254 authored lines — FileLogger + FileLoggerTest + this doc) = **PR slice 1**
+      - `934c0e6c` refactor(covers): shrink covers/missingcovers logs to outcome lines and
+        cron summaries (351 authored lines — 5 covers files) = **PR slice 2 (code)**
+      - docs commit recording these ids = PR slice 2 (docs)
+      Pre-existing deletion `assets/js/larepartidora.code-workspace` and untracked
+      `.codegraph/` remain unstaged/uncommitted by design.
+- [x] T7 done — closed 2026-10-19: both units verified (suite green, lint clean,
+      independent verifier PASS, parent spot-check green); nothing pushed, no PR created
+      (delivery remains the human's decision).
 
 ## Evidence
-Verification evidence recorded in Progress (T5). Commit ids recorded here after T6.
+Verification evidence recorded in Progress (T5/T6).
+
+- Focused test command: `./vendor/bin/phpunit tests/Unit/Api/FileLoggerTest.php` → 10 tests,
+  18 assertions, OK. Full suite `./vendor/bin/phpunit` → 58 tests, 98 assertions, OK
+  (1 pre-existing phpunit.xml schema-9.5 deprecation). `php -l` clean on all 7 files.
+- Runtime harness: N/A — cron scheduling needs a live WP install; behavior preservation
+  instead verified by an independent HEAD-vs-worktree diff review (SQL, batch size,
+  hasMore logic, schedules and public return contracts identical).
+- Rollback boundaries: revert `848b3eb6` alone removes the format change (FileLogger +
+  test + this doc); revert `934c0e6c` alone removes the covers content/cron rework; the
+  two units do not depend on each other at runtime (call sites tolerate either format).
