@@ -25,6 +25,11 @@ class Cron extends BaseController {
             wp_schedule_event( time(), 'twicedaily', 'covers_missing_cron_event' );
         }
         add_action( 'covers_missing_cron_event', [ $this, 'missingCoversCron' ] );
+
+        if ( ! wp_next_scheduled( 'covers_subtitles_cron_event' ) ) {
+            wp_schedule_event( time(), 'twicedaily', 'covers_subtitles_cron_event' );
+        }
+        add_action( 'covers_subtitles_cron_event', [ $this, 'subtitlesCron' ] );
     }
 
     /**
@@ -146,6 +151,38 @@ class Cron extends BaseController {
             . ' | Failed: ' . ( $stats['failed'] ?? 0 )
             . ' | Memory peak: ' . $mem_peak . ' MB ===',
             'missingcovers');
+    }
+
+    /**
+     * subtitlesCron
+     *
+     * Dilve subtitle scan (fill-empty-only, metadata only — no covers_log
+     * rows). One batch of 100 per run: every successful fill removes the
+     * product from the candidate set, so subsequent runs advance naturally.
+     *
+     * @return void
+     */
+    public function subtitlesCron() {
+        $batch_size = 100;
+        $coversApi = new CoversApi;
+        $biblioApi = new BiblioApi;
+        $title = __CLASS__ . ':' . __LINE__ . ' ' . __FUNCTION__;
+        $cron_start = microtime(true);
+        $biblioApi->getLogger()->info($title, '=== SUBTITLES CRON START ===', 'subtitles');
+        $stats = [];
+        $coversApi->scanSubtitles($batch_size, 0, $stats);
+        $total_elapsed = round(microtime(true) - $cron_start, 1);
+        $mem_peak = round(memory_get_peak_usage(true) / 1048576, 1);
+        $biblioApi->getLogger()->info($title,
+            '=== SUBTITLES CRON SUMMARY === Duration: ' . $total_elapsed . 's'
+            . ' | Scanned: ' . ( $stats['scanned'] ?? 0 )
+            . ' | Filled: ' . ( $stats['filled'] ?? 0 )
+            . ' | Skipped has subtitle: ' . ( $stats['skipped_has_subtitle'] ?? 0 )
+            . ' | Skipped no subtitle in ONIX: ' . ( $stats['skipped_no_subtitle_in_onix'] ?? 0 )
+            . ' | Invalid EAN: ' . ( $stats['invalid_ean'] ?? 0 )
+            . ' | Failed: ' . ( $stats['failed'] ?? 0 )
+            . ' | Memory peak: ' . $mem_peak . ' MB ===',
+            'subtitles');
     }
 
 }

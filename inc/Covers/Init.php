@@ -8,6 +8,7 @@ use Inc\Covers\Base\CoversScanProductsFormController;
 use Inc\Covers\Base\Enqueue;
 use Inc\Covers\Commands\CoversHelloCommand;
 use Inc\Covers\Commands\CoversScanProductsCommand;
+use Inc\Covers\Commands\CoversScanSubtitlesCommand;
 use Inc\Covers\Commands\CoversMediaCleanup;
 use Inc\Covers\Pages\Dashboard;
 
@@ -23,6 +24,7 @@ final class Init
       Dashboard::class,
       CoversLogController::class,
       CoversScanProductsCommand::class,
+      CoversScanSubtitlesCommand::class,
       /* CoversHelloCommand::class,
       CoversMediaCleanup::class, */
       CoversScanProductsFormController::class,

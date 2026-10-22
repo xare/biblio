@@ -72,12 +72,15 @@ WooCommerce has no subtitle field. The plugin already receives subtitle data fro
 - Checks: `php -l` clean, `./vendor/bin/phpunit` 58/58 (parent spot check reproduced), clear-path fixture covered by T4.
 - Route: delegated (1 writer). File is **tab-indented** (AGENTS.md's "2 spaces across Geslib/" is wrong here — matched region bytes).
 
-### T3 — Dilve subtitle scan (W3)
-- [ ] `CoversApiDbManager::getProductsWithoutSubtitle()`: `post_type=product`, `post_status=publish`, valid `_ean` (reuse `CoversApi::validateEAN()`), **no** `_subtitle` meta, no `_thumbnail_id`/`hasAttachment` conditions. Batching via `offset`/`limit`.
-- [ ] `CoversApi::scanSubtitles($log_id, $batch_size, $offset, $stats)`: `search_dilve($ean)` → write `_subtitle` **only when empty**. Metadata-only: no `getResourceX`, no `create_cover`, no image side effects. Respect DAPI rate limits (batch + pause).
-- [ ] Align the incidental write at `CoversApi.php:443-447` to the same fill-empty-only rule.
-- [ ] Triggers: new WP-CLI `covers scanSubtitles`; one admin AJAX handler with correct nonce/action pair; optional `subtitles_cron_event` mirroring `covers_cron_event` (batch 100, twice daily). Register via `Init::get_services()`.
-- Checks: `php -l`, suite green, manual run pending user.
+### T3 — Dilve subtitle scan (W3) — DONE
+- [x] `CoversApiDbManager::getProductsWithoutSubtitle(int $batch_size, int $offset)` (`:92`): published products, non-empty `_ean`, NO `_subtitle` row; explicit params (no `$_POST` like its sibling); no `_thumbnail_id`/attachment conditions. Avoided the sibling's latent `$wpdb->prepare()`-with-no-placeholders `doing_it_wrong`.
+- [x] `CoversApi::scanSubtitles($batch_size, $offset, &$stats)` (`:538`): fill-empty-only (re-checks `get_post_meta(...) === ''` at write time), `update_post_meta` on fill, metadata-only (no `getResourceX`/`fetch_cover`/`create_cover` — grep-verified), rate-limited via `biblio_subtitles_scan_interval_ms` filter (default 1000 ms), logs to `'subtitles'` channel, never logs credential URLs. Stats: `scanned, filled, skipped_has_subtitle, skipped_no_subtitle_in_onix, invalid_ean, failed`.
+- [x] Incidental write in `scanProducts()` (`:465-472`) aligned to fill-empty-only (`subtitle=updated` / `subtitle=kept_existing`).
+- [x] Pure seam `parseOnixTitles(\SimpleXMLElement): array` (`:226`) extracted from `search_dilve()` (`:105-108`), byte-identical logic, zero WP functions → T4 test target.
+- [x] Triggers: WP-CLI `covers scanSubtitles` (new `CoversScanSubtitlesCommand.php`, registered in `Init.php`); admin AJAX `wp_ajax_covers_scan_subtitles` added to the `$actions` loop in `CoversScanProductsFormController` with the **matched** pair (`covers_scan_products_form`/`covers_nonce`) + `manage_options` check (broken tab-2 buttons untouched); cron event `covers_subtitles_cron_event` in `Cron.php` — core `twicedaily` (covers' own mechanism, not Geslib's custom `twohourly`), batch 100, no `covers_log` rows.
+- **Divergence from the original checklist (intentional, locked at implementation):** `scanSubtitles()` has NO `$log_id` parameter — metadata-only scan writes no `covers_log`/`covers_lines` rows; cron event named `covers_subtitles_cron_event`, no longer "optional".
+- Checks: `php -l` on all 6 touched files clean, `./vendor/bin/phpunit` 58/58 (parent spot check reproduced).
+- Route: delegated (1 writer). Risks: candidates whose ONIX lacks a subtitle re-enter every batch until data/EAN fixed (bounded 100/run); cron may interleave with `covers_cron_event` (still ≤~2 req/s vs DAPI 6/s).
 
 ### T4 — Tests (W4)
 - [ ] Extract ONIX subtitle parse into a pure method (`parseOnixSubtitle(string $xml)` or equivalent) — Unit tests never run `wp_remote_get()`.
@@ -113,4 +116,6 @@ WooCommerce has no subtitle field. The plugin already receives subtitle data fro
 - 2026-10-22: **T1 done** — `_subtitle` field/save/column/REST registration in `inc/Geslib/Base/GeslibProductController.php` (+55 lines). Verification: writer `php -l` + `./vendor/bin/phpunit` (58/58) reproduced by parent spot check. RDD on (global). Chain strategy: `stacked-to-main`.
   - Commit: `7003c27f` `feat(geslib): add product subtitle admin field and REST meta` (2 files, +165/−1, includes this doc).
   - RDD assessment (base `main`, committed-only, untracked excluded): **risk `medium`, `review_due=false`, reason `under_budget`** — review pending in this slice until the ~400-line budget; boundary stays at `main`.
-- 2026-10-22: **T2 done** — both `_subtitle` writers mirror the feed (clear-on-empty: single `delete_post_meta`, batch raw `$wpdb->delete` before the upsert). JSON path `subtitulo` (wire col 26) verified end-to-end to both writers. +9 lines. Verification: writer + parent spot check `php -l` clean, `./vendor/bin/phpunit` 58/58. Commit: see next entry.
+- 2026-10-22: **T2 done** — both `_subtitle` writers mirror the feed (clear-on-empty: single `delete_post_meta`, batch raw `$wpdb->delete` before the upsert). JSON path `subtitulo` (wire col 26) verified end-to-end to both writers. +9 lines. Verification: writer + parent spot check `php -l` clean, `./vendor/bin/phpunit` 58/58.
+  - Commit: `86310ddd` `fix(geslib): mirror subtitle feed with clear-on-empty in both writers` (2 files, +19/−5). RDD: risk `medium`, `review_due=false`, `under_budget` (180 lines vs base `main`).
+- 2026-10-22: **T3 done** — Dilve subtitle scan: `getProductsWithoutSubtitle()` (`CoversApiDbManager:92`), `scanSubtitles()` fill-empty-only + rate limit (`CoversApi:538`), `parseOnixTitles()` seam (`CoversApi:226`), `scanProducts()` write aligned, triggers = WP-CLI `covers scanSubtitles` + AJAX `wp_ajax_covers_scan_subtitles` (matched nonce) + cron `covers_subtitles_cron_event` (twicedaily, batch 100). 6 files, +225/−10. Verification: writer `php -l` ×6 + suite 58/58, parent spot check reproduced. Commit: see next entry.
