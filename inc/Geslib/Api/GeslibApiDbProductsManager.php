@@ -161,6 +161,8 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 			}
 			if( isset($book_subtitle) && $book_subtitle !== '' ) {
 				update_post_meta($product_id, '_subtitle', $book_subtitle);
+			} else {
+				delete_post_meta($product_id, '_subtitle');
 			}
 			if( isset($author) ) {
 				update_post_meta($product_id, '_author', $author);
@@ -754,6 +756,13 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 			}
 			if ($book_subtitle !== '') {
 				$metaUpdates[] = ['meta_key' => '_subtitle', 'meta_value' => $book_subtitle];
+			} else {
+				// Mirror the feed: an empty subtitle clears the stored value.
+				$wpdb->delete(
+					$wpdb->postmeta,
+					[ 'post_id' => $product_id, 'meta_key' => '_subtitle' ],
+					[ '%d', '%s' ]
+				);
 			}
 			if ($author) {
 				$metaUpdates[] = ['meta_key' => '_author', 'meta_value' => $author];

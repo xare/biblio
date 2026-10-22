@@ -65,10 +65,12 @@ WooCommerce has no subtitle field. The plugin already receives subtitle data fro
 - Route: delegated (1 writer). Note: `show_in_rest` without `auth_callback` makes `_subtitle` REST-readable but not REST-writable — intentional (admin screen authoritative).
 - Risk noted by writer: hook-name typo hazard (`manage_edit-product_columns` underscore) — byte-verified correct at line 27.
 
-### T2 — Geslib overwrite semantics (W2)
-- [ ] `GeslibApiDbProductsManager.php:162` (single) and `:755` (batch): mirror the feed — non-empty value replaces, empty value clears (`delete_post_meta` / remove from `$metaUpdates` + explicit delete).
-- [ ] Confirm `subtitulo` (wire col 26 == `LineTypes::PRODUCT_KEYS` index 26) survives `processGP4` → `build_content` JSON → both writers.
-- Checks: covered by T4 unit tests.
+### T2 — Geslib overwrite semantics (W2) — DONE
+- [x] `GeslibApiDbProductsManager.php:164-166` (single): empty/null `subtitulo` → `delete_post_meta($product_id, '_subtitle')` (no-op on new products, cache-aware).
+- [x] `GeslibApiDbProductsManager.php:759-765` (batch): empty → `$wpdb->delete` of the `_subtitle` row before the upsert block (the `$metaUpdates` upsert has no delete capability; `_subtitle` is absent from `$meta_keys` when empty, so the upsert cannot re-insert). Note: raw `$wpdb` skips object-cache invalidation — pre-existing trait of this method, inherited.
+- [x] JSON path confirmed end-to-end: wire col 26 == `PRODUCT_KEYS` index 26 (count 62) → `processGP4` `array_combine` → `build_content` JSON → `$content['subtitulo']` at `storeProduct:99` / `batchStoreProducts:711`. `GeslibApiSanitize` maps `''` → JSON `null` → `isset()` false → `''` → clear path.
+- Checks: `php -l` clean, `./vendor/bin/phpunit` 58/58 (parent spot check reproduced), clear-path fixture covered by T4.
+- Route: delegated (1 writer). File is **tab-indented** (AGENTS.md's "2 spaces across Geslib/" is wrong here — matched region bytes).
 
 ### T3 — Dilve subtitle scan (W3)
 - [ ] `CoversApiDbManager::getProductsWithoutSubtitle()`: `post_type=product`, `post_status=publish`, valid `_ean` (reuse `CoversApi::validateEAN()`), **no** `_subtitle` meta, no `_thumbnail_id`/`hasAttachment` conditions. Batching via `offset`/`limit`.
@@ -108,4 +110,7 @@ WooCommerce has no subtitle field. The plugin already receives subtitle data fro
 ## Progress
 
 - 2026-10-22: feature document created; branch `feat/product-subtitle` created.
-- 2026-10-22: **T1 done** — `_subtitle` field/save/column/REST registration in `inc/Geslib/Base/GeslibProductController.php` (+55 lines). Verification: writer `php -l` + `./vendor/bin/phpunit` (58/58) reproduced by parent spot check. RDD on (global). Chain strategy: `stacked-to-main`. Commit: see next entry.
+- 2026-10-22: **T1 done** — `_subtitle` field/save/column/REST registration in `inc/Geslib/Base/GeslibProductController.php` (+55 lines). Verification: writer `php -l` + `./vendor/bin/phpunit` (58/58) reproduced by parent spot check. RDD on (global). Chain strategy: `stacked-to-main`.
+  - Commit: `7003c27f` `feat(geslib): add product subtitle admin field and REST meta` (2 files, +165/−1, includes this doc).
+  - RDD assessment (base `main`, committed-only, untracked excluded): **risk `medium`, `review_due=false`, reason `under_budget`** — review pending in this slice until the ~400-line budget; boundary stays at `main`.
+- 2026-10-22: **T2 done** — both `_subtitle` writers mirror the feed (clear-on-empty: single `delete_post_meta`, batch raw `$wpdb->delete` before the upsert). JSON path `subtitulo` (wire col 26) verified end-to-end to both writers. +9 lines. Verification: writer + parent spot check `php -l` clean, `./vendor/bin/phpunit` 58/58. Commit: see next entry.
