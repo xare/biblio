@@ -138,3 +138,14 @@ WooCommerce has no subtitle field. The plugin already receives subtitle data fro
   - One advisory-only note (not returned as a finding by the lens): an earlier workspace-overlay review (`review-9e53e211d4d7317f`) was mistakenly consumed on the pre-existing dirty files (`.gitignore` + deleted `code-workspace`) before the selectors were preserved; its candidate was not the T4 commit. The T4 commit itself was then reviewed correctly via `--base-ref 2f19153c --committed-only`.
   - Review boundary advances to `6e47d0fe`.
 - 2026-10-23: **Feature complete (T1–T4).** Remaining step is delivery: stacked-to-main PRs (one per task), which is a human decision. Pre-existing dirty files (`.gitignore`, deleted `code-workspace`, untracked `.codegraph/`) stay uncommitted.
+- 2026-10-23: **Delivery prepared (stacked-to-main).** Slice branches cut from the linear history (no rewrites); each PR targets `main`, merge order 1→2→3→4.
+
+  | PR | Branch | Commits | Review budget |
+  |---|---|---|---|
+  | 1 | `feat/subtitle-admin-field` | `7003c27f` (T1) | +165/−1 |
+  | 2 | `feat/subtitle-clear-on-empty` | `86310ddd` (T2) | +19/−5 |
+  | 3 | `feat/subtitle-dilve-scan` | `6e0e6a9a` (T3) | +225/−10 |
+  | 4 | `feat/subtitle-tests` | `6e47d0fe` + `e144e6c7` + this docs commit | ≈+475/−11 |
+
+  - PR 4 exceeds the ~400-line budget → **size:exception recommended** (cohesive "tests + advisory ORDER BY fix" unit, already reviewed as one candidate `review-1ddfd07a3a672751` with zero findings; splitting tests from the fix would break the reviewed candidate).
+  - `gh` CLI unavailable in this environment: branches pushed to origin; PRs opened via prefilled GitHub compare URLs (human click). Repo has no CI/issue-link enforcement (no `.github/workflows`), so the issue-first PR rule does not apply here.
