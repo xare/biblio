@@ -130,6 +130,11 @@ WooCommerce has no subtitle field. The plugin already receives subtitle data fro
     - `R3-orderby-missing` — `getProductsWithoutSubtitle()` lacks `ORDER BY`; permanently-unfillable candidates can starve fillable ones across LIMIT batches. **Folded into T4.**
     - `R3-seam-untested` — `parseOnixTitles()` extracted but no tests in the T1–T3 slice. **This is T4.**
   - Review boundary advances to `6e0e6a9a`.
-- 2026-10-23: **T4 done** — 9 new unit tests (ONIX `parseOnixTitles` characterization ×4, GP4 `PRODUCT_KEYS[26]==='subtitulo'` mapping ×3 via fake-wpdb SQL capture, ORDER BY RED/GREEN ×2) + `ORDER BY ID ASC` fix for advisory `R3-orderby-missing`. 5 files (+213/−1). Suite **67/67, 118 assertions** (writer + parent spot check). Exceptions documented in test headers and T4 section above. Route: delegated (1 writer).
-  - Commit: `<pending>` `test(covers): pin subtitle seams and add deterministic ORDER BY to candidate query`.
-  - RDD assessment (base `6e0e6a9a`, committed-only): see next entry.
+- 2026-10-23: **T4 done** — 9 new unit tests (ONIX `parseOnixTitles` characterization ×4, GP4 `PRODUCT_KEYS[26]==='subtitulo'` mapping via fake-wpdb SQL capture, ORDER BY RED/GREEN ×2) + `ORDER BY ID ASC` fix for advisory `R3-orderby-missing`. 6 files, +451/−7 (includes this doc). Suite **67/67, 118 assertions** (writer + parent spot check). Exceptions documented in test headers and T4 section above. Route: delegated (1 writer).
+  - Commit: `6e47d0fe` `test(covers): pin subtitle seams and add deterministic ORDER BY to candidate query` (6 files, +451/−7).
+  - RDD assessment (base `6e0e6a9a`, committed-only): **risk `medium`, `review_due=true`, reason `slice_budget_reached`** (458 lines ≥ ~400). Native review launched: lineage `review-1ddfd07a3a672751`.
+- 2026-10-23: **RDD review for T4 slice APPROVED** — lineage `review-1ddfd07a3a672751`, lens `review-reliability`, candidate 6 files (+458/−7). Captured and admitted on the first Task launch; **zero findings**, no correction required.
+  - Authority burned: `gentle-ai.review-acknowledged/v1`, consumed revision `sha256:f5ff27e5a3cc5aef2be6d0c4a8f20c83b2037dd9d1a84390bfd75234acee5ac6`.
+  - One advisory-only note (not returned as a finding by the lens): an earlier workspace-overlay review (`review-9e53e211d4d7317f`) was mistakenly consumed on the pre-existing dirty files (`.gitignore` + deleted `code-workspace`) before the selectors were preserved; its candidate was not the T4 commit. The T4 commit itself was then reviewed correctly via `--base-ref 2f19153c --committed-only`.
+  - Review boundary advances to `6e47d0fe`.
+- 2026-10-23: **Feature complete (T1–T4).** Remaining step is delivery: stacked-to-main PRs (one per task), which is a human decision. Pre-existing dirty files (`.gitignore`, deleted `code-workspace`, untracked `.codegraph/`) stay uncommitted.
