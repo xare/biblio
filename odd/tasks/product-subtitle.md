@@ -149,3 +149,8 @@ WooCommerce has no subtitle field. The plugin already receives subtitle data fro
 
   - PR 4 exceeds the ~400-line budget → **size:exception recommended** (cohesive "tests + advisory ORDER BY fix" unit, already reviewed as one candidate `review-1ddfd07a3a672751` with zero findings; splitting tests from the fix would break the reviewed candidate).
   - `gh` CLI unavailable in this environment: branches pushed to origin; PRs opened via prefilled GitHub compare URLs (human click). Repo has no CI/issue-link enforcement (no `.github/workflows`), so the issue-first PR rule does not apply here.
+- 2026-10-23: **Delivered — merged to `main` by the user.** The 4-PR plan collapsed to **2 PRs**: each slice branch carries the full linear chain, so only the cumulative tips were needed.
+  - PR #2 `feat/subtitle-dilve-scan` → merge `d7b3b755` (carried T1–T3: `7003c27f`, `86310ddd`, `6e0e6a9a`).
+  - PR #3 `feat/subtitle-tests` → merge `dbc1612f` (carried T4 + docs: `6e47d0fe`, `e144e6c7`, `cae4a026`).
+  - Verified: all feature commits are ancestors of `origin/main`; `git diff cae4a026 origin/main` empty — `main` content ≡ reviewed feature tip (`dbc1612f`). Slice branches remain on origin (safe to delete on GitHub). Pre-existing dirty files (`.gitignore`, deleted `code-workspace`, untracked `.codegraph/`) stay uncommitted as agreed.
+  - **Feature fully delivered.** Follow-ups, if ever wanted (out of scope of this feature): CEGAL subtitle support (no `<Subtitle>` in its XML), REST-writable `_subtitle`, manual test-plan checkboxes above.
