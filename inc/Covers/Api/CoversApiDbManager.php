@@ -103,7 +103,8 @@ class CoversApiDbManager {
 									WHERE meta_key = '_subtitle'
 								)
 				AND post_type = 'product'
-				AND post_status = 'publish'";
+				AND post_status = 'publish'
+				ORDER BY ID ASC";
 
 		if ($batch_size != -1) {
 			$sql .= " LIMIT %d, %d";

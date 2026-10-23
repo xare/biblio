@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Products>
+  <Product>
+    <RecordReference>test.record.001</RecordReference>
+    <NotificationType>03</NotificationType>
+    <Title>
+      <TitleType>05</TitleType>
+      <TitleText>Distinctive Title (non-main)</TitleText>
+    </Title>
+    <Title>
+      <TitleType>01</TitleType>
+      <TitleText>Main Title With Subtitle</TitleText>
+      <Subtitle>A Synthetic Subtitle</Subtitle>
+    </Title>
+  </Product>
+  <Product>
+    <RecordReference>test.record.002</RecordReference>
+    <NotificationType>03</NotificationType>
+    <Title>
+      <TitleType>01</TitleType>
+      <TitleText>Main Title Without Subtitle</TitleText>
+    </Title>
+  </Product>
+  <Product>
+    <RecordReference>test.record.003</RecordReference>
+    <NotificationType>03</NotificationType>
+    <Title>
+      <TitleType>05</TitleType>
+      <TitleText>Only Distinctive Title</TitleText>
+    </Title>
+  </Product>
+</Products>
