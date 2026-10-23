@@ -102,14 +102,9 @@ class CoversApi {
 					$book['price'] = (float)$price->PriceAmount;
 					$book['price'] = str_replace('.', '', number_format($book['price'], 2));
 				}
-				# Get title
-				foreach($xml_book->Title as $title) {
-					if ($title->TitleType == "01") {
-						$book["title"] = (string)$title->TitleText;
-						if ($title->Subtitle) {
-							$book["subtitle"] = (string)$title->Subtitle;
-						}
-					}
+				# Get title (pure seam: parseOnixTitles)
+				foreach ( $this->parseOnixTitles( $xml_book ) as $title_key => $title_value ) {
+					$book[$title_key] = $title_value;
 				}
 				# Get Publisher.
 				foreach ($xml_book->Publisher as $publisher) {
@@ -215,6 +210,31 @@ class CoversApi {
 		}
 		return $book;
   	}
+
+	/**
+	 * Extract the main title (ONIX TitleType 01) and optional subtitle from a
+	 * single ONIX <Product> element.
+	 *
+	 * Pure seam: no WordPress functions, unit-testable via
+	 * simplexml_load_string() on a fixture.
+	 *
+	 * @param \SimpleXMLElement $xml_book
+	 *   One ONIX <Product> element.
+	 * @return array
+	 *   ['title' => string] and, when present, ['subtitle' => string].
+	 */
+	public function parseOnixTitles(\SimpleXMLElement $xml_book): array {
+		$titles = [];
+		foreach($xml_book->Title as $title) {
+			if ($title->TitleType == "01") {
+				$titles["title"] = (string)$title->TitleText;
+				if ($title->Subtitle) {
+					$titles["subtitle"] = (string)$title->Subtitle;
+				}
+			}
+		}
+		return $titles;
+	}
 
 	/**
 	 * Function CoversSearch::get_dilve_file_url
@@ -442,8 +462,13 @@ class CoversApi {
 					}
 					$subtitle_note = '';
 					if ( isset($book['subtitle']) && !empty($book['subtitle']) ) {
-						update_post_meta( $product['ID'], '_subtitle', $book['subtitle'] );
-						$subtitle_note = ' subtitle=updated';
+						// Fill-empty-only: never overwrite an existing subtitle.
+						if ( get_post_meta( $product['ID'], '_subtitle', true ) === '' ) {
+							update_post_meta( $product['ID'], '_subtitle', $book['subtitle'] );
+							$subtitle_note = ' subtitle=updated';
+						} else {
+							$subtitle_note = ' subtitle=kept_existing';
+						}
 					}
 					$coversApiDbManager->set_covers_url($ean, $book['cover_url']);
 					if ( $attached_id ) {
@@ -490,6 +515,96 @@ class CoversApi {
 			$coversApiDbLogManager->set_processed_products($log_id, $offset + $index);
 		}
 		return json_encode( $response );
+	}
+
+	/**
+	 * Scan published products without a subtitle and fill _subtitle from Dilve
+	 * ONIX metadata (fill-empty-only).
+	 *
+	 * Fully decoupled from the cover pipeline: candidates come from
+	 * getProductsWithoutSubtitle() (no _thumbnail_id condition) and this method
+	 * never calls getResourceX/fetch_cover/create_cover — metadata only. One
+	 * search_dilve() call per product per run, paced with a filterable pause
+	 * (biblio_subtitles_scan_interval_ms, default 1000 ms) so the run stays far
+	 * under DAPI's rate limits.
+	 *
+	 * Stats mechanism: pass an array by reference as $stats to receive the
+	 * per-call counters ['scanned','filled','skipped_has_subtitle',
+	 * 'skipped_no_subtitle_in_onix','invalid_ean','failed'].
+	 * The array is reset on every call. When the argument is omitted the
+	 * counters stay local. Return contract mirrors scanProducts(): false only
+	 * when the candidate list is empty, otherwise a JSON string of $stats.
+	 */
+	public function scanSubtitles(int $batch_size = -1, int $offset = 0, ?array &$stats = null): mixed {
+		$coversApiDbManager = new CoversApiDbManager;
+		$stats = [
+			'scanned' => 0,
+			'filled' => 0,
+			'skipped_has_subtitle' => 0,
+			'skipped_no_subtitle_in_onix' => 0,
+			'invalid_ean' => 0,
+			'failed' => 0,
+		];
+		$products = (array) $coversApiDbManager->getProductsWithoutSubtitle($batch_size, $offset);
+		// Never log the query URL: it embeds Dilve credentials.
+		$this->biblioApi->getLogger()->info(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'scan_subtitles: candidates=' . count($products), 'subtitles');
+		if ( empty($products) ) {
+			return false;
+		}
+		$calls_made = 0;
+		foreach ( $products as $product ) {
+			$stats['scanned']++;
+			if ( empty($product['ID']) ) {
+				$this->biblioApi->getLogger()->error(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, "scan_subtitles: product id is empty", 'subtitles');
+				$stats['failed']++;
+				continue;
+			}
+			$ean = get_post_meta( $product['ID'], '_ean', true );
+			if ( $ean == '' || $this->validateEAN($ean) == false ) {
+				$this->biblioApi->getLogger()->error(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'scan_subtitles: invalid ean=' . $ean . ' id=' . $product['ID'], 'subtitles');
+				$stats['invalid_ean']++;
+				continue;
+			}
+			// Rate limit: one getRecordsX call per product, pause between calls.
+			// DAPI errors count against the limits, so failures are never retried
+			// within a run — one attempt per product.
+			if ( $calls_made > 0 ) {
+				usleep( (int) apply_filters( 'biblio_subtitles_scan_interval_ms', 1000 ) * 1000 );
+			}
+			$calls_made++;
+			$book = $this->search_dilve($ean);
+			if ( is_string($book) ) {
+				// DAPI answered with an <error> body; at most 200 chars of text.
+				$this->biblioApi->getLogger()->error(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'scan_subtitles: dilve error ean=' . $ean . ' id=' . $product['ID'] . ' error=' . substr($book, 0, 200), 'subtitles');
+				$stats['failed']++;
+				continue;
+			}
+			if ( ! is_array($book) ) {
+				$this->biblioApi->getLogger()->error(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'scan_subtitles: request failed ean=' . $ean . ' id=' . $product['ID'], 'subtitles');
+				$stats['failed']++;
+				continue;
+			}
+			if ( ! isset($book['subtitle']) || $book['subtitle'] === '' ) {
+				$this->biblioApi->getLogger()->debug(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'scan_subtitles: no subtitle in onix ean=' . $ean . ' id=' . $product['ID'], 'subtitles');
+				$stats['skipped_no_subtitle_in_onix']++;
+				continue;
+			}
+			// Re-check at write time: fill-empty-only against concurrent writes.
+			if ( get_post_meta( $product['ID'], '_subtitle', true ) !== '' ) {
+				$this->biblioApi->getLogger()->debug(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'scan_subtitles: skipped already has subtitle ean=' . $ean . ' id=' . $product['ID'], 'subtitles');
+				$stats['skipped_has_subtitle']++;
+				continue;
+			}
+			if ( update_post_meta( $product['ID'], '_subtitle', $book['subtitle'] ) === false ) {
+				$this->biblioApi->getLogger()->error(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'scan_subtitles: update_post_meta failed ean=' . $ean . ' id=' . $product['ID'], 'subtitles');
+				$stats['failed']++;
+				continue;
+			}
+			$this->biblioApi->getLogger()->info(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'scan_subtitles: filled ean=' . $ean . ' id=' . $product['ID'], 'subtitles');
+			$stats['filled']++;
+		}
+		$this->biblioApi->getLogger()->info(__CLASS__. ':'.__LINE__.' '.__FUNCTION__, 'scan_subtitles: processed=' . $stats['scanned'] . ' filled=' . $stats['filled'], 'subtitles');
+		return json_encode( $stats );
 	}
 
 	function validateEAN($ean) {

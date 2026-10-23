@@ -77,6 +77,44 @@ class CoversApiDbManager {
 		return $wpdb->get_results( $query, ARRAY_A );
 
     }
+
+    /**
+     * Published products with a non-empty _ean meta and NO _subtitle meta row.
+     *
+     * Explicit parameters only (unlike getProductsWithoutCover, which reads
+     * $_POST). Products that already have a thumbnail ARE candidates: the
+     * Dilve subtitle scan is decoupled from the cover pipeline.
+     *
+     * @param  int $batch_size LIMIT row count (-1 = all).
+     * @param  int $offset     LIMIT offset.
+     * @return array
+     */
+    public function getProductsWithoutSubtitle(int $batch_size = -1, int $offset = 0): array {
+        global $wpdb;
+        // Candidates: _ean meta row non-empty AND no _subtitle meta row at all.
+		$sql = "SELECT * FROM {$wpdb->posts}
+				WHERE ID IN (
+								SELECT post_id from {$wpdb->postmeta}
+								WHERE meta_key = '_ean'
+								AND meta_value <> ''
+							)
+				AND ID NOT IN (
+									SELECT post_id from {$wpdb->postmeta}
+									WHERE meta_key = '_subtitle'
+								)
+				AND post_type = 'product'
+				AND post_status = 'publish'";
+
+		if ($batch_size != -1) {
+			$sql .= " LIMIT %d, %d";
+			$query = $wpdb->prepare($sql, $offset, $batch_size);
+		} else {
+			// No placeholders: prepare() without any is a wpdb doing_it_wrong.
+			$query = $sql;
+		}
+		return $wpdb->get_results( $query, ARRAY_A );
+
+    }
     /**
      * insertFile
      *

@@ -22,7 +22,19 @@ class GeslibProductController extends BaseController {
         add_filter('manage_edit-product_columns', [ $this, 'add_num_paginas_column'], 10, 1);
         add_action('woocommerce_product_options_sku', [ $this, 'woocommerce_product_options_num_paginas']);
         add_action('woocommerce_admin_process_product_object', [ $this, 'save_product_num_paginas'], 10, 1);
-    
+
+        // Subtitle: descriptive content near the title, not in the SKU panel.
+        add_filter('manage_edit-product_columns', [ $this, 'add_subtitle_column'], 10, 1);
+        add_action('manage_product_posts_custom_column', [ $this, 'display_subtitle'], 10, 2);
+        add_action('woocommerce_product_options_general_product_data', [ $this, 'woocommerce_product_options_subtitle']);
+        add_action('woocommerce_admin_process_product_object', [ $this, 'save_product_subtitle'], 10, 1);
+
+        register_post_meta('product', '_subtitle', [
+            'type' => 'string',
+            'single' => true,
+            'show_in_rest' => true,
+            'sanitize_callback' => 'sanitize_text_field',
+        ]);
     }
 
     function add_author_column( $columns ) {
@@ -120,6 +132,47 @@ class GeslibProductController extends BaseController {
     function save_product_ean($product) {
         $ean = isset($_POST['_ean']) ? $_POST['_ean'] : '';
         $product->update_meta_data('_ean', sanitize_text_field($ean));
+    }
+
+    function add_subtitle_column( $columns ) {
+        $new_columns = array();
+        foreach ($columns as $column_name => $column_info) {
+            if ('title' === $column_name) {
+                $new_columns['subtitle'] = esc_html__('SUBTITLE', 'woocommerce');
+            }
+            $new_columns[$column_name] = $column_info;
+        }
+        return $new_columns;
+    }
+
+    function display_subtitle($column, $post_id) {
+        if ('subtitle' === $column) {
+            echo esc_html(get_post_meta($post_id, '_subtitle', true));
+        }
+    }
+
+    function woocommerce_product_options_subtitle() {
+        woocommerce_wp_text_input([
+            'id' => '_subtitle',
+            'label' => __('SUBTITLE', 'woocommerce'),
+            'description' => __('Enter the subtitle here.', 'woocommerce'),
+            'desc_tip' => 'true',
+            'placeholder' => __('SUBTITLE', 'woocommerce'),
+        ]);
+    }
+
+    function save_product_subtitle($product) {
+        // Absent key (e.g. quick edit, non-product save): leave existing meta untouched.
+        if (!isset($_POST['_subtitle'])) {
+            return;
+        }
+        $subtitle = sanitize_text_field(wp_unslash($_POST['_subtitle']));
+        // Explicitly empty submission clears the meta entirely (removes the row).
+        if ('' === $subtitle) {
+            $product->delete_meta_data('_subtitle');
+        } else {
+            $product->update_meta_data('_subtitle', $subtitle);
+        }
     }
 
 }
