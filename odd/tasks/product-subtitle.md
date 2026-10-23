@@ -82,11 +82,14 @@ WooCommerce has no subtitle field. The plugin already receives subtitle data fro
 - Checks: `php -l` on all 6 touched files clean, `./vendor/bin/phpunit` 58/58 (parent spot check reproduced).
 - Route: delegated (1 writer). Risks: candidates whose ONIX lacks a subtitle re-enter every batch until data/EAN fixed (bounded 100/run); cron may interleave with `covers_cron_event` (still ≤~2 req/s vs DAPI 6/s).
 
-### T4 — Tests (W4)
-- [ ] Extract ONIX subtitle parse into a pure method (`parseOnixSubtitle(string $xml)` or equivalent) — Unit tests never run `wp_remote_get()`.
-- [ ] Fixture = the real ONIX response recorded in `urls.md` (trimmed to title/subtitle block if useful).
-- [ ] Test: ONIX fixture → subtitle extracted; GP4 fixture line (62 fields + trailing `|`) → `subtitulo` → meta write path; empty-`subtitulo` `M` → cleared; Dilve scan leaves non-empty `_subtitle` untouched.
-- Checks: `./vendor/bin/phpunit` all green.
+### T4 — Tests (W4) — DONE
+- [x] ONIX parse seam: `parseOnixTitles()` already extracted in T3 (`CoversApi:226`) — reused, no new seam. Tests via `ReflectionClass::newInstanceWithoutConstructor()` (constructor is `get_option()`-coupled).
+- [x] Fixture = hand-authored synthetic ONIX (`tests/Unit/Covers/Fixtures/onix-product-titles.xml`, 3 Products, zero vendor data — `urls.md` contains live credentials and was never copied).
+- [x] Tests (9 new): ONIX title/subtitle extraction (4 cases incl. non-01 filtering and non-first 01); GP4 wire-column→`subtitulo` mapping (`PRODUCT_KEYS` is a WP-free class constant in `inc/Geslib/Config/LineTypes.php:31`, index 26, count 62 — brief's reachability concern did not materialize); ORDER BY SQL capture (2 cases, fake-wpdb, RED→GREEN observed).
+- [x] Advisory `R3-orderby-missing` fixed: `ORDER BY ID ASC` added to `getProductsWithoutSubtitle()` (`CoversApiDbManager:106-107`, tab-indented region matched; sibling `getProductsWithoutCover` byte-identical to HEAD — an accidental first-match edit was detected via `git diff` and reverted).
+- **Documented exceptions (honest, not faked):** (1) Dilve fill-empty guard in `scanSubtitles()` is not Unit-testable (`get_post_meta`/`update_post_meta`; no new production seams allowed post-review) — documented in `CoversApiParseOnixTitlesTest` header; (2) Geslib clear-on-empty meta write (`delete_post_meta` / `$wpdb->delete`) likewise not Unit-testable — `LineTypesProductKeysTest` pins only the pure mapping contract.
+- Checks (writer + parent spot check reproduced): `./vendor/bin/phpunit` **67/67 green, 118 assertions** (58 base + 9 new; single pre-existing phpunit.xml schema-9.5 deprecation); `php -l` clean on all 4 touched/created PHP files.
+- Route: delegated (1 writer). TDD evidence: ORDER BY tests RED on pre-fix SQL → GREEN after edit; characterization tests (ONIX + GP4) pin pre-existing behavior (classic RED not applicable).
 
 ## Route declaration
 
@@ -118,4 +121,31 @@ WooCommerce has no subtitle field. The plugin already receives subtitle data fro
   - RDD assessment (base `main`, committed-only, untracked excluded): **risk `medium`, `review_due=false`, reason `under_budget`** — review pending in this slice until the ~400-line budget; boundary stays at `main`.
 - 2026-10-22: **T2 done** — both `_subtitle` writers mirror the feed (clear-on-empty: single `delete_post_meta`, batch raw `$wpdb->delete` before the upsert). JSON path `subtitulo` (wire col 26) verified end-to-end to both writers. +9 lines. Verification: writer + parent spot check `php -l` clean, `./vendor/bin/phpunit` 58/58.
   - Commit: `86310ddd` `fix(geslib): mirror subtitle feed with clear-on-empty in both writers` (2 files, +19/−5). RDD: risk `medium`, `review_due=false`, `under_budget` (180 lines vs base `main`).
-- 2026-10-22: **T3 done** — Dilve subtitle scan: `getProductsWithoutSubtitle()` (`CoversApiDbManager:92`), `scanSubtitles()` fill-empty-only + rate limit (`CoversApi:538`), `parseOnixTitles()` seam (`CoversApi:226`), `scanProducts()` write aligned, triggers = WP-CLI `covers scanSubtitles` + AJAX `wp_ajax_covers_scan_subtitles` (matched nonce) + cron `covers_subtitles_cron_event` (twicedaily, batch 100). 6 files, +225/−10. Verification: writer `php -l` ×6 + suite 58/58, parent spot check reproduced. Commit: see next entry.
+- 2026-10-22: **T3 done** — Dilve subtitle scan: `getProductsWithoutSubtitle()` (`CoversApiDbManager:92`), `scanSubtitles()` fill-empty-only + rate limit (`CoversApi:538`), `parseOnixTitles()` seam (`CoversApi:226`), `scanProducts()` write aligned, triggers = WP-CLI `covers scanSubtitles` + AJAX `wp_ajax_covers_scan_subtitles` (matched nonce) + cron `covers_subtitles_cron_event` (twicedaily, batch 100). 6 files, +225/−10. Verification: writer `php -l` ×6 + suite 58/58, parent spot check reproduced.
+  - Commit: `6e0e6a9a` `feat(covers): add fill-empty subtitle scan from Dilve with CLI, AJAX and cron triggers` (6 files, +225/−10).
+  - RDD assessment (base `main`, committed-only): **risk `medium`, `review_due=true`, reason `slice_budget_reached`** (479 lines ≥ ~400). Native review launched: lineage `review-97352617f150af09`.
+- 2026-10-22: **RDD review for T1–T3 slice APPROVED** — lineage `review-97352617f150af09`, lens `review-reliability`, candidate 9 files (+479/−11). Capture admitted on first successful Task; two empty provider-Task outputs were transport noise, resolved by relaunching with the exact provider-issued `provider_task.prompt` (the full materialized prompt must be passed verbatim; the transport hook owns capture).
+  - Authority burned: `gentle-ai.review-acknowledged/v1`, consumed revision `sha256:e4c33e27c9eebbde5215fc6d17244c8fc9f45357eb7ff604e32f8ea0ce27009f`.
+  - Outcome: **approved, no correction required**. Two advisory WARNINGs (informational, non-blocking):
+    - `R3-orderby-missing` — `getProductsWithoutSubtitle()` lacks `ORDER BY`; permanently-unfillable candidates can starve fillable ones across LIMIT batches. **Folded into T4.**
+    - `R3-seam-untested` — `parseOnixTitles()` extracted but no tests in the T1–T3 slice. **This is T4.**
+  - Review boundary advances to `6e0e6a9a`.
+- 2026-10-23: **T4 done** — 9 new unit tests (ONIX `parseOnixTitles` characterization ×4, GP4 `PRODUCT_KEYS[26]==='subtitulo'` mapping via fake-wpdb SQL capture, ORDER BY RED/GREEN ×2) + `ORDER BY ID ASC` fix for advisory `R3-orderby-missing`. 6 files, +451/−7 (includes this doc). Suite **67/67, 118 assertions** (writer + parent spot check). Exceptions documented in test headers and T4 section above. Route: delegated (1 writer).
+  - Commit: `6e47d0fe` `test(covers): pin subtitle seams and add deterministic ORDER BY to candidate query` (6 files, +451/−7).
+  - RDD assessment (base `6e0e6a9a`, committed-only): **risk `medium`, `review_due=true`, reason `slice_budget_reached`** (458 lines ≥ ~400). Native review launched: lineage `review-1ddfd07a3a672751`.
+- 2026-10-23: **RDD review for T4 slice APPROVED** — lineage `review-1ddfd07a3a672751`, lens `review-reliability`, candidate 6 files (+458/−7). Captured and admitted on the first Task launch; **zero findings**, no correction required.
+  - Authority burned: `gentle-ai.review-acknowledged/v1`, consumed revision `sha256:f5ff27e5a3cc5aef2be6d0c4a8f20c83b2037dd9d1a84390bfd75234acee5ac6`.
+  - One advisory-only note (not returned as a finding by the lens): an earlier workspace-overlay review (`review-9e53e211d4d7317f`) was mistakenly consumed on the pre-existing dirty files (`.gitignore` + deleted `code-workspace`) before the selectors were preserved; its candidate was not the T4 commit. The T4 commit itself was then reviewed correctly via `--base-ref 2f19153c --committed-only`.
+  - Review boundary advances to `6e47d0fe`.
+- 2026-10-23: **Feature complete (T1–T4).** Remaining step is delivery: stacked-to-main PRs (one per task), which is a human decision. Pre-existing dirty files (`.gitignore`, deleted `code-workspace`, untracked `.codegraph/`) stay uncommitted.
+- 2026-10-23: **Delivery prepared (stacked-to-main).** Slice branches cut from the linear history (no rewrites); each PR targets `main`, merge order 1→2→3→4.
+
+  | PR | Branch | Commits | Review budget |
+  |---|---|---|---|
+  | 1 | `feat/subtitle-admin-field` | `7003c27f` (T1) | +165/−1 |
+  | 2 | `feat/subtitle-clear-on-empty` | `86310ddd` (T2) | +19/−5 |
+  | 3 | `feat/subtitle-dilve-scan` | `6e0e6a9a` (T3) | +225/−10 |
+  | 4 | `feat/subtitle-tests` | `6e47d0fe` + `e144e6c7` + this docs commit | ≈+475/−11 |
+
+  - PR 4 exceeds the ~400-line budget → **size:exception recommended** (cohesive "tests + advisory ORDER BY fix" unit, already reviewed as one candidate `review-1ddfd07a3a672751` with zero findings; splitting tests from the fix would break the reviewed candidate).
+  - `gh` CLI unavailable in this environment: branches pushed to origin; PRs opened via prefilled GitHub compare URLs (human click). Repo has no CI/issue-link enforcement (no `.github/workflows`), so the issue-first PR rule does not apply here.
